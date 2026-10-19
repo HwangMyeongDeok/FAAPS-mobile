@@ -192,7 +192,7 @@ export default function ProfileScreen() {
               Chuyên ngành sẽ giúp AI và advisor tư vấn chính xác hơn.
             </Text>
             <View className="gap-2">
-              {data.available_specializations.map((sp) => {
+              {data.available_specializations.map((sp: { id: string; name: string; description?: string | null }) => {
                 const selected = data.specialization?.id === sp.id;
                 return (
                   <TouchableOpacity

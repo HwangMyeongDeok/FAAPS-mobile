@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { House, User2 } from "lucide-react-native";
+import { BookOpen, House, User2 } from "lucide-react-native";
 
 import { useAuthStore } from "@/stores/auth";
 
@@ -29,6 +29,13 @@ export default function AppLayout() {
         options={{
           title: "Trang chủ",
           tabBarIcon: (props) => <House {...(props as any)} />,
+        }}
+      />
+      <Tabs.Screen
+        name="curriculum"
+        options={{
+          title: "Chương trình",
+          tabBarIcon: (props) => <BookOpen {...(props as any)} />,
         }}
       />
       <Tabs.Screen

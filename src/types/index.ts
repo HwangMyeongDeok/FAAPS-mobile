@@ -83,6 +83,7 @@ export interface CurriculumVersion {
 
 export interface Specialization {
   id: string;
+  major_id: string;
   curriculum_version_id: string;
   code: string;
   name: string;

@@ -1,121 +1,100 @@
-// ============================================================
-// Mock profile API (FE-S-2: Personal Profile)
-// Aggregates user + student + curriculum + advisor info.
-// ============================================================
-
+/**
+ * Profile service.
+ *
+ * To wire to a real backend: set `EXPO_PUBLIC_API_BASE_URL` and replace the
+ * mock branches with `request<...>` calls — signature of every exported
+ * function stays the same.
+ */
+import type { User, Student, Specialization, Major, CurriculumVersion, Advisor, StudentAdvisorAssignment } from "@/types";
+import { config } from "@/config/api";
+import { request } from "@/lib/http";
 import {
-  mockAdvisors,
-  mockCurriculumVersions,
-  mockMajors,
-  mockSpecializations,
-  mockStudentAdvisorAssignments,
-  mockStudents,
-  mockUsers,
-  mutableState,
+  mockStudents, mockUsers, mockMajors, mockCurriculumVersions,
+  mockSpecializations, mockAdvisors, mockStudentAdvisorAssignments, mutableState,
 } from "@/lib/db/mockDb";
-import type { ProfileResponse, Specialization, User } from "@/types";
 
-// API contract for the PATCH /me profile endpoint.
-export interface ProfileApiPatch {
-  full_name?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  avatar_url?: string | null;
-}
-
+const NETWORK_DELAY_MS = 600;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function getMyProfile(userId: string): Promise<ProfileResponse> {
-  await wait(300);
+export interface ProfileResponse {
+  user: User;
+  student: Student;
+  major: Major;
+  curriculum_version: CurriculumVersion;
+  specialization: Specialization | null;
+  available_specializations: Specialization[];
+  advisor: {
+    user: Pick<User, "id" | "full_name" | "email" | "phone" | "avatar_url">;
+    advisor: Advisor;
+    assignment: StudentAdvisorAssignment;
+  } | null;
+}
 
-  const user = mockUsers.find((u) => u.id === userId);
-  const student = mockStudents.find((s) => s.user_id === userId);
-  if (!user || !student) throw new Error("Student profile not found");
-
-  const major = mockMajors.find((m) => m.id === student.major_id)!;
-  const curriculumVersion = mockCurriculumVersions.find(
-    (cv) => cv.id === student.curriculum_version_id,
-  )!;
-
-  const availableSpecializations = mockSpecializations.filter(
-    (sp) => sp.curriculum_version_id === curriculumVersion.id,
-  );
-
-  const selectedSpId =
-    mutableState.selectedSpecializationByStudent[userId] ?? null;
-  const specialization =
-    availableSpecializations.find((sp) => sp.id === selectedSpId) ?? null;
-
-  // pick the active primary advisor
-  const assignment = mockStudentAdvisorAssignments.find(
-    (sa) => sa.student_id === userId && sa.status === "ACTIVE" && sa.is_primary,
-  );
-  let advisorBlock: ProfileResponse["advisor"] = null;
-  if (assignment) {
-    const advisor = mockAdvisors.find((a) => a.user_id === assignment.advisor_id);
-    const advisorUser = mockUsers.find((u) => u.id === assignment.advisor_id);
-    if (advisor && advisorUser) {
-      advisorBlock = {
-        user: {
-          id: advisorUser.id,
-          full_name: advisorUser.full_name,
-          email: advisorUser.email,
-          phone: advisorUser.phone ?? null,
-          avatar_url: advisorUser.avatar_url ?? null,
-        },
-        advisor,
-        assignment,
-      };
-    }
-  }
-
+/** Translate a partial User patch → API request body shape */
+export function toApiPatch(patch: Partial<Pick<User, "full_name" | "phone" | "email" | "avatar_url">>) {
   return {
-    user,
-    student,
-    major,
-    curriculum_version: curriculumVersion,
-    specialization,
-    available_specializations: availableSpecializations,
-    advisor: advisorBlock,
+    full_name:  patch.full_name,
+    phone:      patch.phone,
+    email:      patch.email,
+    avatar_url: patch.avatar_url,
   };
 }
 
-export async function updateMyProfile(
-  userId: string,
-  patch: ProfileApiPatch,
-) {
-  await wait(350);
-  const user = mockUsers.find((u) => u.id === userId);
-  if (!user) throw new Error("User not found");
-  if (patch.full_name !== undefined && patch.full_name !== null) user.full_name = patch.full_name;
-  if (patch.phone !== undefined && patch.phone !== null) user.phone = patch.phone;
-  if (patch.email !== undefined && patch.email !== null) user.email = patch.email;
-  if (patch.avatar_url !== undefined) user.avatar_url = patch.avatar_url;
-  return user;
+export async function getMyProfile(userId: string): Promise<ProfileResponse | null> {
+  if (config.isMockMode) {
+    await wait(NETWORK_DELAY_MS);
+    const user = mockUsers.find((u) => u.id === userId);
+    const student = mockStudents.find((s) => s.user_id === userId);
+    if (!user || !student) return null;
+
+    const major = mockMajors.find((m) => m.id === student.major_id)!;
+    const curriculum_version = mockCurriculumVersions.find((cv) => cv.id === student.curriculum_version_id)!;
+    const selectedSpecId = mutableState.selectedSpecializationByStudent[userId] ?? null;
+    const specialization = selectedSpecId
+      ? mockSpecializations.find((sp) => sp.id === selectedSpecId) ?? null
+      : null;
+    const available_specializations = mockSpecializations.filter(
+      (sp) => sp.major_id === student.major_id && sp.curriculum_version_id === student.curriculum_version_id
+    );
+
+    const assignment = mockStudentAdvisorAssignments.find((sa) => sa.student_id === userId) ?? null;
+    const advisorUser = assignment ? mockUsers.find((u) => u.id === assignment.advisor_id) : null;
+    const advisorRecord = assignment ? mockAdvisors.find((a) => a.user_id === assignment.advisor_id) : null;
+    const advisor = assignment && advisorUser && advisorRecord
+      ? {
+          user: { id: advisorUser.id, full_name: advisorUser.full_name, email: advisorUser.email, phone: advisorUser.phone ?? null, avatar_url: advisorUser.avatar_url ?? null },
+          advisor: advisorRecord,
+          assignment,
+        }
+      : null;
+
+    return { user, student, major, curriculum_version, specialization, available_specializations, advisor };
+  }
+
+  // Real backend:
+  // return request<ProfileResponse>(`/students/${userId}/profile`);
+  throw new Error("Not configured");
 }
 
-// Bridge between form layer and API layer — used by the React Query hook.
-// Allows optional / null fields on the form side without leaking that into
-// the API contract.
-export function toApiPatch(
-  formPatch: Partial<Pick<User, "full_name" | "email" | "phone" | "avatar_url">>,
-): ProfileApiPatch {
-  const out: ProfileApiPatch = {};
-  if (formPatch.full_name !== undefined) out.full_name = formPatch.full_name;
-  if (formPatch.email !== undefined) out.email = formPatch.email;
-  if (formPatch.phone !== undefined) out.phone = formPatch.phone;
-  if (formPatch.avatar_url !== undefined) out.avatar_url = formPatch.avatar_url;
-  return out;
+export async function updateMyProfile(userId: string, patch: Partial<Pick<User, "full_name" | "phone" | "email" | "avatar_url">>) {
+  if (config.isMockMode) {
+    await wait(NETWORK_DELAY_MS);
+    const user = mockUsers.find((u) => u.id === userId);
+    if (!user) return null;
+    Object.assign(user, patch);
+    return user;
+  }
+  // return request<User>(`/students/${userId}/profile`, { method: "PATCH", body: patch });
+  throw new Error("Not configured");
 }
 
-export async function updateMySpecialization(
-  userId: string,
-  specializationId: string | null,
-): Promise<Specialization | null> {
-  await wait(250);
-  mutableState.selectedSpecializationByStudent[userId] = specializationId;
-  if (!specializationId) return null;
-  const sp = mockSpecializations.find((s) => s.id === specializationId);
-  if (!sp) throw new Error("Specialization not found");
-  return sp;
+export async function updateMySpecialization(userId: string, specializationId: string | null) {
+  if (config.isMockMode) {
+    await wait(NETWORK_DELAY_MS);
+    if (!(userId in mutableState.selectedSpecializationByStudent)) return false;
+    mutableState.selectedSpecializationByStudent[userId] = specializationId;
+    return true;
+  }
+  // return request<{ ok: boolean }>(`/students/${userId}/specialization`, { method: "PUT", body: { specialization_id: specializationId } });
+  throw new Error("Not configured");
 }

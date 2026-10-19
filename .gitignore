@@ -42,3 +42,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Expo logs
+expo-log.txt
+expo-stderr.log
+expo-stdout.log
+
+# Editor / agent scratch
+.cursor/
+.claude/
