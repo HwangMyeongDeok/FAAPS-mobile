@@ -1,59 +1,62 @@
-// ============================================================
-// Mock auth API — emulates Google Sign-In.
-// Swap these functions with real network calls when the backend
-// is ready. The contract (function shape + return types) is the
-// single source of truth for the whole mobile app.
-// ============================================================
+/**
+ * Auth service.
+ *
+ * ── HOW TO WIRE TO A REAL BACKEND ────────────────────────────────────────────
+ * 1. Set `EXPO_PUBLIC_API_BASE_URL` in app.json → extra.
+ * 2. In `signInWithGoogle()` below, replace the mock branch with:
+ *        return request<AuthSession>("/auth/google", { method: "POST" });
+ * 3. Everything downstream (store, screens, queries) is unaffected.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+import type { AuthSession, User } from "@/types";
+import { config } from "@/config/api";
+import { request } from "@/lib/http";
+import { mockUsers, mockStudents } from "@/lib/db/mockDb";
 
-import {
-  mockAdvisors,
-  mockCurriculumVersions,
-  mockMajors,
-  mockSpecializations,
-  mockStudentAdvisorAssignments,
-  mockStudents,
-  mockUsers,
-  mutableState,
-} from "@/lib/db/mockDb";
-import type { AuthSession } from "@/types";
-
-const NETWORK_DELAY_MS = 450;
+const NETWORK_DELAY_MS = 900;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const SESSIONS_KEY = "faaps.mock.session";
-
-export const authStorage = {
-  load(): AuthSession | null {
-    // Persistence is handled separately by AsyncStorage on the
-    // call site; this is just a contract for tests.
-    return null;
-  },
-};
+/** AsyncStorage key for the persisted session object */
+export const SESSIONS_KEY = "faaps.auth.session";
 
 /**
- * Mock "Sign in with Google" flow.
+ * Sign in with Google.
  *
- * For demo we always resolve as the team-member account
- * (Hoàng Minh Đức) so the QA build matches the developer's identity.
- * When the real Google OAuth is wired in, the success path will be
- * driven by the returned id_token instead.
+ * Mock implementation picks the "u-student-duc" account so the demo always
+ * has consistent data. Real implementation will exchange a Google ID token
+ * with the backend.
  */
 export async function signInWithGoogle(): Promise<AuthSession> {
-  await wait(NETWORK_DELAY_MS);
-  const user = mockUsers.find((u) => u.id === "u-student-duc")!;
-  const student = mockStudents.find((s) => s.user_id === user.id)!;
-  const session: AuthSession = {
-    token: `mock.jwt.${user.id}.${Date.now()}`,
-    user,
-    student_code: student.student_code,
-  };
-  return session;
+  if (config.isMockMode) {
+    await wait(NETWORK_DELAY_MS);
+    const user = mockUsers.find((u) => u.id === "u-student-duc")!;
+    const student = mockStudents.find((s) => s.user_id === user.id)!;
+    return {
+      token: `mock.jwt.${user.id}.${Date.now()}`,
+      user,
+      student_code: student.student_code,
+    };
+  }
+
+  // Real backend example — TODO when ready:
+  // return request<AuthSession>("/auth/google", { method: "POST", body: { idToken } });
+  throw new Error("Real auth endpoint not configured. Set EXPO_PUBLIC_API_BASE_URL.");
 }
 
-/** Mock sign out — clears session from caller side only. */
 export async function signOut(): Promise<void> {
-  await wait(150);
-  // no-op on server; persistence handled by store
+  if (config.isMockMode) {
+    await wait(300);
+    return;
+  }
+  // await request<void>("/auth/logout", { method: "POST", token: currentToken });
 }
 
-export { SESSIONS_KEY };
+export async function refreshSession(token: string): Promise<User | null> {
+  if (config.isMockMode) {
+    await wait(300);
+    const match = mockUsers.find((u) => `mock.jwt.${u.id}` === token.slice(0, token.lastIndexOf(".")));
+    return match ?? null;
+  }
+  // return request<User>("/auth/me", { token });
+  return null;
+}
