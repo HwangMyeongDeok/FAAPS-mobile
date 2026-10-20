@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { BookOpen, House, User2 } from "lucide-react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useAuthStore } from "@/stores/auth";
 
@@ -28,21 +28,21 @@ export default function AppLayout() {
         name="index"
         options={{
           title: "Trang chủ",
-          tabBarIcon: (props) => <House {...(props as any)} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="home" size={24} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="curriculum"
         options={{
           title: "Chương trình",
-          tabBarIcon: (props) => <BookOpen {...(props as any)} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="book-open" size={24} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Hồ sơ",
-          tabBarIcon: (props) => <User2 {...(props as any)} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account" size={24} color={color as string} />,
         }}
       />
     </Tabs>
