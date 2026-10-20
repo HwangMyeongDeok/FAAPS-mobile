@@ -1,5 +1,6 @@
 import { LogIn, Sparkles } from "lucide-react-native";
 import { Text, View } from "react-native";
+import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Badge, Button } from "@/components/ui";
@@ -10,6 +11,10 @@ export default function SignIn() {
   const signIn = useAuthStore((s) => s.signInWithGoogle);
   const status = useAuthStore((s) => s.status);
   const loading = status === "authenticating";
+
+  if (status === "authenticated") {
+    return <Redirect href="/(app)" />;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background">
