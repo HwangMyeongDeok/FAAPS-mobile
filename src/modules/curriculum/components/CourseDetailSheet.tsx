@@ -1,5 +1,5 @@
-import { BookOpen, GraduationCap, Layers, Lock } from "lucide-react-native";
 import { Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Badge, Separator, Sheet } from "@/components/ui";
 import { courseTypeBadgeClass, courseTypeLabel, type CourseType } from "./CourseTypeIcon";
@@ -19,7 +19,7 @@ export function CourseDetailSheet({ course, courseLookup, onClose }: CourseDetai
     <Sheet open={!!course} onClose={onClose}>
       <View className="flex-row items-center gap-3 mb-4">
         <View className="h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-          <BookOpen size={22} color="hsl(20 90% 53%)" />
+          <MaterialCommunityIcons name="book-open-page-variant" size={22} color="hsl(20 90% 53%)" />
         </View>
         <View className="flex-1">
           <Text className="text-lg font-bold text-foreground" numberOfLines={2}>
@@ -53,7 +53,7 @@ export function CourseDetailSheet({ course, courseLookup, onClose }: CourseDetai
         <Text className="text-sm font-semibold text-foreground mb-2">Điều kiện tiên quyết</Text>
         {course.prerequisites.length === 0 ? (
           <View className="flex-row items-center gap-2">
-            <Lock size={14} color="hsl(215.4 16.3% 46.9%)" />
+            <MaterialCommunityIcons name="lock" size={14} color="hsl(215.4 16.3% 46.9%)" />
             <Text className="text-sm text-muted-foreground">Không có môn tiên quyết.</Text>
           </View>
         ) : (

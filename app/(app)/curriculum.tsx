@@ -1,7 +1,7 @@
-import { BookOpen, GraduationCap, TrendingUp } from "lucide-react-native";
 import { useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Card, CardContent, Progress, Separator } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -67,19 +67,19 @@ export default function CurriculumScreen() {
             </Text>
             <View className="flex-row gap-3">
               <Stat
-                Icon={GraduationCap}
+                iconName="school"
                 label="Môn đã hoàn thành"
                 value={`${completedCourses}/${totalCourses}`}
                 tone="primary"
               />
               <Stat
-                Icon={BookOpen}
+                iconName="book-open-page-variant"
                 label="Tín chỉ tích lũy"
                 value={`${earnedCredits}/${totalCredits}`}
                 tone="success"
               />
               <Stat
-                Icon={TrendingUp}
+                iconName="trending-up"
                 label="Tiến độ"
                 value={`${overallPercent}%`}
                 tone="warning"
@@ -139,12 +139,12 @@ export default function CurriculumScreen() {
 // ============================================================
 
 function Stat({
-  Icon,
+  iconName,
   label,
   value,
   tone,
 }: {
-  Icon: React.ComponentType<{ size?: number; color?: string }>;
+  iconName: string;
   label: string;
   value: string;
   tone: "primary" | "success" | "warning";
@@ -155,7 +155,7 @@ function Stat({
   return (
     <View className="flex-1">
       <View className={`h-9 w-9 items-center justify-center rounded-lg ${bg}`}>
-        <Icon size={18} color={color} />
+        <MaterialCommunityIcons name={iconName as any} size={18} color={color} />
       </View>
       <Text className="text-base font-bold text-foreground mt-2">{value}</Text>
       <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={2}>
