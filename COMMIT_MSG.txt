@@ -1,0 +1,6 @@
+feat: add course search + fix lucide crash
+
+- Replace lucide-react-native with @expo/vector-icons (MaterialCommunityIcons)
+  across curriculum module to fix crash on web
+- FE-S-4: Course search screen with search/filter/detail
+- Add types, api, queries for courses

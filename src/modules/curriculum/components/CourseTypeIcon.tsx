@@ -1,5 +1,5 @@
-import { BookOpen, Code2, Cpu, FlaskConical, GraduationCap, Layers, Wrench } from "lucide-react-native";
 import { View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export type CourseType = "CORE" | "ELECTIVE" | "PRACTICUM" | "PROJECT";
 
@@ -13,22 +13,26 @@ interface CourseTypeIconProps {
 }
 
 const config: Record<CourseType, {
-  Icon: React.ComponentType<{ size?: number; color?: string }>;
+  iconName: string;
   bgClass: string;
   fgClass: string;
   label: string;
 }> = {
-  CORE:      { Icon: BookOpen,       bgClass: "bg-blue-100",     fgClass: "text-blue-700",     label: "Core"      },
-  ELECTIVE:  { Icon: Layers,         bgClass: "bg-purple-100",   fgClass: "text-purple-700",   label: "Elective"  },
-  PRACTICUM: { Icon: FlaskConical,   bgClass: "bg-emerald-100",  fgClass: "text-emerald-700",  label: "Practicum" },
-  PROJECT:   { Icon: GraduationCap,  bgClass: "bg-amber-100",    fgClass: "text-amber-700",    label: "Project"   },
+  CORE:      { iconName: "book-open-page-variant", bgClass: "bg-blue-100",   fgClass: "text-blue-700",   label: "Core"      },
+  ELECTIVE:  { iconName: "layers-triple",         bgClass: "bg-purple-100", fgClass: "text-purple-700", label: "Elective"  },
+  PRACTICUM: { iconName: "flask",                 bgClass: "bg-emerald-100",fgClass: "text-emerald-700",label: "Practicum" },
+  PROJECT:   { iconName: "school",                bgClass: "bg-amber-100",  fgClass: "text-amber-700",  label: "Project"   },
 };
 
 export function CourseTypeIcon({ type, size = 18, bgClass, fgClass }: CourseTypeIconProps) {
   const c = config[type];
   return (
     <View className={`items-center justify-center rounded-lg p-2 ${bgClass ?? c.bgClass}`}>
-      <c.Icon size={size} color="currentColor" />
+      <MaterialCommunityIcons
+        name={c.iconName as any}
+        size={size}
+        color="currentColor"
+      />
     </View>
   );
 }

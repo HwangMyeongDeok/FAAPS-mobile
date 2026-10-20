@@ -32,6 +32,13 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="courses"
+        options={{
+          title: "Môn học",
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="book-search" size={24} color={color as string} />,
+        }}
+      />
+      <Tabs.Screen
         name="curriculum"
         options={{
           title: "Chương trình",

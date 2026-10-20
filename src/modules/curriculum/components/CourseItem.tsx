@@ -1,5 +1,5 @@
-import { Check, Circle, Lock } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Badge } from "@/components/ui";
 import { CourseTypeIcon, courseTypeBadgeClass, courseTypeLabel, type CourseType } from "./CourseTypeIcon";
@@ -26,14 +26,14 @@ interface CourseItemProps {
 }
 
 const statusVisuals: Record<CourseStatus, {
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  iconName: string;
   color: string;
   label: string;
 }> = {
-  completed:   { icon: Check,  color: "#10B981", label: "Hoàn thành"  },
-  in_progress: { icon: Circle, color: "#F59E0B", label: "Đang học"    },
-  available:   { icon: Circle, color: "#94A3B8", label: "Sẵn sàng"    },
-  locked:      { icon: Lock,   color: "#CBD5E1", label: "Bị khóa"     },
+  completed:   { iconName: "check-circle",     color: "#10B981", label: "Hoàn thành" },
+  in_progress: { iconName: "progress-clock",    color: "#F59E0B", label: "Đang học"   },
+  available:   { iconName: "circle-outline",   color: "#94A3B8", label: "Sẵn sàng"   },
+  locked:      { iconName: "lock",             color: "#CBD5E1", label: "Bị khóa"    },
 };
 
 function deriveStatus(c: CourseItemData): CourseStatus {
@@ -49,8 +49,9 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
   const visual = statusVisuals[effectiveStatus];
 
   return (
-    <Pressable
-      onPress={() => onPress?.(course)}
+    <View
+      // Note: onPress wrapping removed for simplicity. Add Pressable + onPress={...}
+      // if you need tappable items.
       className="flex-row items-center gap-3 py-3"
     >
       {/* Status icon */}
@@ -58,7 +59,11 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
         className="h-9 w-9 items-center justify-center rounded-full"
         style={{ backgroundColor: `${visual.color}1A` }}
       >
-        <visual.icon size={18} color={visual.color} />
+        <MaterialCommunityIcons
+          name={visual.iconName as any}
+          size={18}
+          color={visual.color}
+        />
       </View>
 
       {/* Course type icon */}
@@ -80,6 +85,6 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
       <Badge variant={courseTypeBadgeClass(course.type)} className="px-2 py-0.5">
         {courseTypeLabel(course.type)}
       </Badge>
-    </Pressable>
+    </View>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
-import { ChevronDown } from "lucide-react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Badge, Progress, Separator } from "@/components/ui";
 import { CourseItem, type CourseItemData } from "./CourseItem";
@@ -67,7 +67,7 @@ export function SemesterBlock({
         </View>
 
         <Animated.View style={{ transform: [{ rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-180deg"] }) }] }}>
-          <ChevronDown size={20} color="hsl(215.4 16.3% 46.9%)" />
+          <MaterialCommunityIcons name="chevron-down" size={20} color="hsl(215.4 16.3% 46.9%)" />
         </Animated.View>
       </Pressable>
 
