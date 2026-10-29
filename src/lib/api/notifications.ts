@@ -4,6 +4,9 @@
  * Mock data shows reminders about study plan updates, advisor replies, etc.
  */
 import { config } from "@/config/api";
+// Reserved for wiring the real backend — the endpoint calls below are still
+// commented out, so ESLint would otherwise flag this as an unused import.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { request } from "@/lib/http";
 
 const NETWORK_DELAY_MS = 400;

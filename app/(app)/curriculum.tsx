@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { Card, CardContent, Progress, Separator } from "@/components/ui";
+import { Card, CardContent, Progress } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   CourseDetailSheet,

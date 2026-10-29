@@ -10,6 +10,9 @@
  */
 import type { AuthSession, User } from "@/types";
 import { config } from "@/config/api";
+// Reserved for wiring the real backend — the endpoint call below is still
+// commented out, so ESLint would otherwise flag this as an unused import.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { request } from "@/lib/http";
 import { mockUsers, mockStudents } from "@/lib/db/mockDb";
 

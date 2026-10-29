@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useState, type ComponentProps } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 
 export interface InputProps {
   error?: string;

@@ -10,7 +10,7 @@
  * @see Report FE-S-4
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -23,12 +23,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { Badge, Card, CardContent, Separator, Sheet } from "@/components/ui";
+import { Badge, Separator, Sheet } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useCourses, useCourseDetail } from "@/lib/queries/course";
-import { useRecommendedCourses } from "@/lib/queries/course";
-import { useAuthStore } from "@/stores/auth";
-import { useMyProfile } from "@/lib/queries/profile";
+import { useCourseDetail, useCourses } from "@/lib/queries/course";
 import type { Course, CourseCategory } from "@/types/course";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +140,10 @@ export default function CoursesScreen() {
           renderItem={({ item }) => (
             <Pressable
               onPress={() => setActiveFilter(item.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeFilter === item.key }}
+              className={`px-3.5 py-2.5 rounded-full text-xs font-medium transition-colors ${
                 activeFilter === item.key
                   ? "bg-primary text-white"
                   : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
@@ -206,9 +206,9 @@ export default function CoursesScreen() {
           <Text className="text-red-500 mt-3">Không tải được danh sách môn học.</Text>
           <Pressable
             onPress={() => refetch()}
-            className="mt-4 px-4 py-2 bg-primary rounded-lg"
+            className="mt-4 px-6 py-3 bg-primary rounded-xl"
           >
-            <Text className="text-white text-sm font-medium">Thử lại</Text>
+            <Text className="text-white text-sm font-semibold">Thử lại</Text>
           </Pressable>
         </View>
       )}
@@ -478,7 +478,7 @@ function categoryBadgeVariant(
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-  useMemo(() => {
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(timer);
   }, [value, delay]);
