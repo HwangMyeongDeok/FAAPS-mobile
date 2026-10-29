@@ -1,23 +1,34 @@
 /**
- * Profile service.
+ * Profile service — student profile, specialization.
  *
- * To wire to a real backend: set `EXPO_PUBLIC_API_BASE_URL` and replace the
- * mock branches with `request<...>` calls — signature of every exported
- * function stays the same.
+ * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
+ * The `else` branch already contains the real HTTP calls. Flip
+ * `config.isMockMode` to false (app.json → extra, or EXPO_PUBLIC_MOCK_MODE)
+ * to switch over.
  */
-import type { User, Student, Specialization, Major, CurriculumVersion, Advisor, StudentAdvisorAssignment } from "@/types";
+import type {
+  User,
+  Student,
+  Specialization,
+  Major,
+  CurriculumVersion,
+  Advisor,
+  StudentAdvisorAssignment,
+} from "@/types";
 import { config } from "@/config/api";
-// Reserved for wiring the real backend — the endpoint call below is still
-// commented out, so ESLint would otherwise flag this as an unused import.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { request } from "@/lib/http";
+import { http } from "@/lib/http";
+import { getAuthToken } from "@/lib/api/token";
+import { mockDelay } from "@/lib/db/mockDelay";
 import {
-  mockStudents, mockUsers, mockMajors, mockCurriculumVersions,
-  mockSpecializations, mockAdvisors, mockStudentAdvisorAssignments, mutableState,
+  mockStudents,
+  mockUsers,
+  mockMajors,
+  mockCurriculumVersions,
+  mockSpecializations,
+  mockAdvisors,
+  mockStudentAdvisorAssignments,
+  mutableState,
 } from "@/lib/db/mockDb";
-
-const NETWORK_DELAY_MS = 600;
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface ProfileResponse {
   user: User;
@@ -34,70 +45,110 @@ export interface ProfileResponse {
 }
 
 /** Translate a partial User patch → API request body shape */
-export function toApiPatch(patch: Partial<Pick<User, "full_name" | "phone" | "email" | "avatar_url">>) {
+export function toApiPatch(
+  patch: Partial<Pick<User, "full_name" | "phone" | "email" | "avatar_url">>,
+) {
   return {
-    full_name:  patch.full_name,
-    phone:      patch.phone,
-    email:      patch.email,
+    full_name: patch.full_name,
+    phone: patch.phone,
+    email: patch.email,
     avatar_url: patch.avatar_url,
   };
 }
 
 export async function getMyProfile(userId: string): Promise<ProfileResponse | null> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
     const user = mockUsers.find((u) => u.id === userId);
     const student = mockStudents.find((s) => s.user_id === userId);
     if (!user || !student) return null;
 
     const major = mockMajors.find((m) => m.id === student.major_id)!;
-    const curriculum_version = mockCurriculumVersions.find((cv) => cv.id === student.curriculum_version_id)!;
+    const curriculum_version = mockCurriculumVersions.find(
+      (cv) => cv.id === student.curriculum_version_id,
+    )!;
     const selectedSpecId = mutableState.selectedSpecializationByStudent[userId] ?? null;
     const specialization = selectedSpecId
       ? mockSpecializations.find((sp) => sp.id === selectedSpecId) ?? null
       : null;
     const available_specializations = mockSpecializations.filter(
-      (sp) => sp.major_id === student.major_id && sp.curriculum_version_id === student.curriculum_version_id
+      (sp) =>
+        sp.major_id === student.major_id &&
+        sp.curriculum_version_id === student.curriculum_version_id,
     );
 
-    const assignment = mockStudentAdvisorAssignments.find((sa) => sa.student_id === userId) ?? null;
-    const advisorUser = assignment ? mockUsers.find((u) => u.id === assignment.advisor_id) : null;
-    const advisorRecord = assignment ? mockAdvisors.find((a) => a.user_id === assignment.advisor_id) : null;
-    const advisor = assignment && advisorUser && advisorRecord
-      ? {
-          user: { id: advisorUser.id, full_name: advisorUser.full_name, email: advisorUser.email, phone: advisorUser.phone ?? null, avatar_url: advisorUser.avatar_url ?? null },
-          advisor: advisorRecord,
-          assignment,
-        }
+    const assignment =
+      mockStudentAdvisorAssignments.find((sa) => sa.student_id === userId) ?? null;
+    const advisorUser = assignment
+      ? mockUsers.find((u) => u.id === assignment.advisor_id)
       : null;
+    const advisorRecord = assignment
+      ? mockAdvisors.find((a) => a.user_id === assignment.advisor_id)
+      : null;
+    const advisor =
+      assignment && advisorUser && advisorRecord
+        ? {
+            user: {
+              id: advisorUser.id,
+              full_name: advisorUser.full_name,
+              email: advisorUser.email,
+              phone: advisorUser.phone ?? null,
+              avatar_url: advisorUser.avatar_url ?? null,
+            },
+            advisor: advisorRecord,
+            assignment,
+          }
+        : null;
 
-    return { user, student, major, curriculum_version, specialization, available_specializations, advisor };
+    return {
+      user,
+      student,
+      major,
+      curriculum_version,
+      specialization,
+      available_specializations,
+      advisor,
+    };
   }
 
-  // Real backend:
-  // return request<ProfileResponse>(`/students/${userId}/profile`);
-  throw new Error("Not configured");
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.get<ProfileResponse>(`/api/students/${userId}/profile`, { token });
 }
 
-export async function updateMyProfile(userId: string, patch: Partial<Pick<User, "full_name" | "phone" | "email" | "avatar_url">>) {
+export async function updateMyProfile(
+  userId: string,
+  patch: Partial<Pick<User, "full_name" | "phone" | "email" | "avatar_url">>,
+) {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
     const user = mockUsers.find((u) => u.id === userId);
     if (!user) return null;
     Object.assign(user, patch);
     return user;
   }
-  // return request<User>(`/students/${userId}/profile`, { method: "PATCH", body: patch });
-  throw new Error("Not configured");
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.patch<User>(`/api/students/${userId}/profile`, toApiPatch(patch), { token });
 }
 
-export async function updateMySpecialization(userId: string, specializationId: string | null) {
+export async function updateMySpecialization(
+  userId: string,
+  specializationId: string | null,
+) {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
     if (!(userId in mutableState.selectedSpecializationByStudent)) return false;
     mutableState.selectedSpecializationByStudent[userId] = specializationId;
     return true;
   }
-  // return request<{ ok: boolean }>(`/students/${userId}/specialization`, { method: "PUT", body: { specialization_id: specializationId } });
-  throw new Error("Not configured");
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.put<{ ok: boolean }>(
+    `/api/students/${userId}/specialization`,
+    { specialization_id: specializationId },
+    { token },
+  );
 }

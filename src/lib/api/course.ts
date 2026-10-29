@@ -1,13 +1,14 @@
 /**
- * Course service.
+ * Course service — search / detail / recommendations.
  *
  * Data flow:
- *   Screen → Query hook → Service function → mock API (or real API later)
+ *   Screen → Query hook → Service function → mock DB (or real API later)
  *
- * The service layer wraps the data-access functions and applies
- * any business logic, validation, or transformation.
+ * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
+ * The `else` branch already contains the real HTTP calls. Flip
+ * `config.isMockMode` to false (app.json → extra, or EXPO_PUBLIC_MOCK_MODE)
+ * to switch over.
  */
-
 import type {
   Course,
   CourseDetail,
@@ -17,45 +18,47 @@ import type {
   PrerequisiteType,
 } from "@/types/course";
 import { config } from "@/config/api";
-// Reserved for wiring the real backend — the endpoint calls below are still
-// commented out, so ESLint would otherwise flag this as an unused import.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { request } from "@/lib/http";
+import { http } from "@/lib/http";
+import { getAuthToken } from "@/lib/api/token";
+import { mockDelay } from "@/lib/db/mockDelay";
 import {
   mockCurriculumCourses,
+  mockCourseDetails,
   type CurriculumCourse,
 } from "@/lib/db/mockDb";
-
-const NETWORK_DELAY_MS = 400;
 
 // ── Mock helpers ─────────────────────────────────────────────────────────────
 
 /** Convert our internal mock format to the Course type. */
 function mockToCourse(mock: CurriculumCourse): Course {
+  const details = mockCourseDetails[mock.course_code];
   return {
     id: mock.id,
     code: mock.course_code,
     name: mock.name,
     credits: mock.credits,
     category: mockTypeToCategory(mock.type),
-    description: null,
-    objectives: null,
-    learning_outcomes: null,
+    description: details?.description ?? null,
+    objectives: details?.objectives ?? null,
+    learning_outcomes: details?.learning_outcomes ?? null,
     status: "ACTIVE",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: "2026-06-01T00:00:00Z",
+    updated_at: "2026-10-01T00:00:00Z",
   };
 }
 
-function mockTypeToCategory(
-  type: CurriculumCourse["type"]
-): Course["category"] {
+function mockTypeToCategory(type: CurriculumCourse["type"]): Course["category"] {
   switch (type) {
-    case "CORE":      return "CORE";
-    case "ELECTIVE":  return "ELECTIVE";
-    case "PRACTICUM": return "PRACTICUM";
-    case "PROJECT":   return "PROJECT";
-    default:          return "OTHER";
+    case "CORE":
+      return "CORE";
+    case "ELECTIVE":
+      return "ELECTIVE";
+    case "PRACTICUM":
+      return "PRACTICUM";
+    case "PROJECT":
+      return "PROJECT";
+    default:
+      return "OTHER";
   }
 }
 
@@ -69,17 +72,19 @@ function mockToDetail(mock: CurriculumCourse): CourseDetail {
     return {
       id: `prereq-${mock.id}-${pid}`,
       course_id: mock.id,
-      prerequisite_course: prereqMock ? mockToCourse(prereqMock) : {
-        id: pid,
-        code: pid,
-        name: pid,
-        credits: 0,
-        category: "OTHER",
-        status: "ACTIVE",
-        created_at: "",
-        updated_at: "",
-      },
-      group_no: 1,
+      prerequisite_course: prereqMock
+        ? mockToCourse(prereqMock)
+        : {
+            id: pid,
+            code: pid,
+            name: pid,
+            credits: 0,
+            category: "OTHER",
+            status: "ACTIVE",
+            created_at: "",
+            updated_at: "",
+          },
+      group_no: idx + 1,
       type: "PREREQUISITE" as PrerequisiteType,
       minimum_score: null,
     };
@@ -90,59 +95,61 @@ function mockToDetail(mock: CurriculumCourse): CourseDetail {
     .filter((c) => c.prerequisites.includes(mock.id))
     .map((c) => ({ id: c.id, code: c.course_code, name: c.name }));
 
+  // Co-requisites: courses in the same semester sharing a type
+  const coRequisites = mockCurriculumCourses
+    .filter((c) => c.semester === mock.semester && c.type === mock.type && c.id !== mock.id)
+    .map(mockToCourse);
+
   return {
     ...course,
     prerequisites,
     required_by: requiredBy,
-    co_requisites: [],
+    co_requisites: coRequisites,
   };
 }
 
 // ── API functions ────────────────────────────────────────────────────────────
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 /**
- * Search/list courses with optional filters.
+ * Search/list courses with optional filters (paginated).
  */
 export async function searchCourses(
-  params: CoursesSearchParams = {}
+  params: CoursesSearchParams = {},
 ): Promise<PaginatedCourses> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
 
     const q = (params.q ?? "").toLowerCase().trim();
     let courses = mockCurriculumCourses.map(mockToCourse);
 
-    // Filter by search query
     if (q) {
       courses = courses.filter(
         (c) =>
           c.code.toLowerCase().includes(q) ||
-          c.name.toLowerCase().includes(q)
+          c.name.toLowerCase().includes(q) ||
+          (c.description ?? "").toLowerCase().includes(q),
       );
     }
 
-    // Filter by category
     if (params.category) {
       courses = courses.filter((c) => c.category === params.category);
+    }
+
+    if (params.status) {
+      courses = courses.filter((c) => c.status === params.status);
     }
 
     const page = params.page ?? 1;
     const pageSize = params.page_size ?? 20;
     const total = courses.length;
     const start = (page - 1) * pageSize;
-    const data = courses.slice(start, start + pageSize);
 
-    return { data, total, page, page_size: pageSize };
+    return { data: courses.slice(start, start + pageSize), total, page, page_size: pageSize };
   }
 
-  // Real API
-  // return request<PaginatedCourses>("/courses/search", {
-  //   method: "POST",
-  //   body: params,
-  // });
-  throw new Error("Not configured");
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.post<PaginatedCourses>("/api/courses/search", params, { token });
 }
 
 /**
@@ -150,28 +157,28 @@ export async function searchCourses(
  */
 export async function getCourseDetail(courseId: string): Promise<CourseDetail | null> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
 
     const mock = mockCurriculumCourses.find((c) => c.id === courseId);
     if (!mock) return null;
     return mockToDetail(mock);
   }
 
-  // Real API
-  // return request<CourseDetail>(`/courses/${courseId}`);
-  throw new Error("Not configured");
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.get<CourseDetail>(`/api/courses/${courseId}`, { token });
 }
 
 /**
- * Get course recommendations for a student (based on curriculum, progress).
- * Currently returns courses the student hasn't completed yet.
+ * Get course recommendations for a student (based on curriculum + progress).
+ * Mock: returns the courses the student has not completed yet.
  */
 export async function getRecommendedCourses(studentId: string): Promise<Course[]> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
 
     const completed = new Set(
-      mockCurriculumCourses.filter((c) => c.completed).map((c) => c.id)
+      mockCurriculumCourses.filter((c) => c.completed).map((c) => c.id),
     );
 
     return mockCurriculumCourses
@@ -179,7 +186,7 @@ export async function getRecommendedCourses(studentId: string): Promise<Course[]
       .map(mockToCourse);
   }
 
-  // Real API
-  // return request<Course[]>(`/students/${studentId}/recommended-courses`);
-  throw new Error("Not configured");
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.get<Course[]>(`/api/students/${studentId}/recommended-courses`, { token });
 }
