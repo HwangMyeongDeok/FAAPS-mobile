@@ -1,37 +1,33 @@
 /**
- * Auth service.
+ * Auth service — sign in / sign out / session refresh.
  *
- * ── HOW TO WIRE TO A REAL BACKEND ────────────────────────────────────────────
- * 1. Set `EXPO_PUBLIC_API_BASE_URL` in app.json → extra.
- * 2. In `signInWithGoogle()` below, replace the mock branch with:
- *        return request<AuthSession>("/auth/google", { method: "POST" });
- * 3. Everything downstream (store, screens, queries) is unaffected.
- * ─────────────────────────────────────────────────────────────────────────────
+ * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
+ * `config.isMockMode` decides which branch runs. To wire the real backend:
+ *   1. Set `extra.isMockMode = false` (and `apiBaseUrl`) in app.json, or
+ *      `EXPO_PUBLIC_MOCK_MODE=false` in .env
+ *   2. The `else` branch below already contains the real calls.
  */
 import type { AuthSession, User } from "@/types";
 import { config } from "@/config/api";
-// Reserved for wiring the real backend — the endpoint call below is still
-// commented out, so ESLint would otherwise flag this as an unused import.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { request } from "@/lib/http";
+import { http } from "@/lib/http";
+import { getAuthToken, SESSIONS_KEY } from "@/lib/api/token";
+import { mockDelay } from "@/lib/db/mockDelay";
 import { mockUsers, mockStudents } from "@/lib/db/mockDb";
 
-const NETWORK_DELAY_MS = 900;
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** AsyncStorage key for the persisted session object */
-export const SESSIONS_KEY = "faaps.auth.session";
+export { SESSIONS_KEY };
 
 /**
  * Sign in with Google.
  *
- * Mock implementation picks the "u-student-duc" account so the demo always
- * has consistent data. Real implementation will exchange a Google ID token
- * with the backend.
+ * Mock: picks the "u-student-duc" account so the demo always has consistent
+ * data. Real: exchanges a Google ID token with the backend.
+ *
+ * @param googleIdToken ID token obtained from Google Sign-In. In mock mode
+ *   this argument is ignored.
  */
-export async function signInWithGoogle(): Promise<AuthSession> {
+export async function signInWithGoogle(googleIdToken?: string): Promise<AuthSession> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
     const user = mockUsers.find((u) => u.id === "u-student-duc")!;
     const student = mockStudents.find((s) => s.user_id === user.id)!;
     return {
@@ -41,25 +37,34 @@ export async function signInWithGoogle(): Promise<AuthSession> {
     };
   }
 
-  // Real backend example — TODO when ready:
-  // return request<AuthSession>("/auth/google", { method: "POST", body: { idToken } });
-  throw new Error("Real auth endpoint not configured. Set EXPO_PUBLIC_API_BASE_URL.");
+  // TODO: Wire BE later — pass the real Google ID token from expo-auth-session
+  // so the backend can verify it and issue a FAAPS session.
+  if (!googleIdToken) {
+    throw new Error("Google ID token is required when EXPO_PUBLIC_MOCK_MODE=false.");
+  }
+  return http.post<AuthSession>("/api/auth/google", { idToken: googleIdToken });
 }
 
 export async function signOut(): Promise<void> {
   if (config.isMockMode) {
-    await wait(300);
+    await mockDelay(300);
     return;
   }
-  // await request<void>("/auth/logout", { method: "POST", token: currentToken });
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  await http.post<void>("/api/auth/logout", undefined, { token });
 }
 
 export async function refreshSession(token: string): Promise<User | null> {
   if (config.isMockMode) {
-    await wait(300);
-    const match = mockUsers.find((u) => `mock.jwt.${u.id}` === token.slice(0, token.lastIndexOf(".")));
+    await mockDelay(300);
+    const match = mockUsers.find(
+      (u) => `mock.jwt.${u.id}` === token.slice(0, token.lastIndexOf(".")),
+    );
     return match ?? null;
   }
-  // return request<User>("/auth/me", { token });
-  return null;
+
+  // TODO: Wire BE later
+  return http.get<User>("/api/auth/me", { token });
 }

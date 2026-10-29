@@ -1,23 +1,17 @@
 /**
  * Planning service — AI-generated study plans.
  *
- * Real backend will likely expose:
- *   GET  /students/:id/study-plan               (current plan)
- *   POST /students/:id/study-plan/regenerate    (force a new plan)
- *   POST /students/:id/study-plan/draft         (save draft tweaks)
- *
- * Mock data returns a deterministic-ish plan so the UI demo always works.
+ * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
+ * The `else` branch already contains the real HTTP calls. Flip
+ * `config.isMockMode` to false (app.json → extra, or EXPO_PUBLIC_MOCK_MODE)
+ * to switch over.
  */
 import type { GeneratePlanInput } from "@/modules/planning/schemas/planning.schema";
 import { config } from "@/config/api";
-// Reserved for wiring the real backend — the endpoint calls below are still
-// commented out, so ESLint would otherwise flag this as an unused import.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { request } from "@/lib/http";
+import { http } from "@/lib/http";
+import { getAuthToken } from "@/lib/api/token";
+import { mockDelay } from "@/lib/db/mockDelay";
 import { mockCurriculumCourses, mockSemesters } from "@/lib/db/mockDb";
-
-const NETWORK_DELAY_MS = 1200;
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface StudyPlan {
   id: string;
@@ -43,18 +37,19 @@ export interface CoursePlan {
   reason: string;
 }
 
+/** Build a deterministic-ish mock plan. */
 function buildMockPlan(studentId: string, seed: number = Date.now()): StudyPlan {
   const sems = mockSemesters.slice(0, 6);
+  const pending = mockCurriculumCourses.filter((c) => !c.completed);
+
   return {
-    id: "plan-1",
+    id: `plan-${studentId}`,
     student_id: studentId,
     generated_at: new Date(seed).toISOString(),
     status: "published",
-    total_credits: 72,
-    semesters: sems.map((sem, idx) => ({
-      semester_id: sem.id,
-      semester_label: sem.label,
-      courses: mockCurriculumCourses
+    total_credits: pending.reduce((s, c) => s + c.credits, 0),
+    semesters: sems.map((sem, idx) => {
+      const courses = pending
         .filter((_, i) => i % sems.length === idx)
         .slice(0, 4)
         .map((c) => ({
@@ -62,55 +57,71 @@ function buildMockPlan(studentId: string, seed: number = Date.now()): StudyPlan 
           course_code: c.course_code,
           course_name: c.name,
           credits: c.credits,
-          reason: `Prerequisite for advanced ${c.name}`,
-        })),
-      projected_gpa: 7.5 + (seed % 10) / 10,
-    })),
+          reason: `Prerequisite chain for ${c.name}`,
+        }));
+      return {
+        semester_id: sem.id,
+        semester_label: sem.label,
+        courses,
+        projected_gpa: Math.round((7.5 + (seed % 10) / 10) * 100) / 100,
+      };
+    }),
   };
 }
 
 export async function getStudyPlan(studentId: string): Promise<StudyPlan | null> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS);
+    await mockDelay();
     return buildMockPlan(studentId);
   }
-  // return request<StudyPlan>(`/students/${studentId}/study-plan`);
-  throw new Error("Not configured");
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.get<StudyPlan>(`/api/students/${studentId}/study-plan`, { token });
 }
 
 /**
  * Ask the AI to re-generate the plan with new constraints.
- * In a real backend this will hit the model (LLM) and take 5–20s.
+ * A real backend hits the LLM here and takes 5–20s.
  */
 export async function regenerateStudyPlan(
   studentId: string,
   input: GeneratePlanInput,
 ): Promise<StudyPlan | null> {
   if (config.isMockMode) {
-    await wait(NETWORK_DELAY_MS * 2);
+    await mockDelay(1600);
     return buildMockPlan(studentId, Date.now());
   }
-  // return request<StudyPlan>(`/students/${studentId}/study-plan/regenerate`, {
-  //   method: "POST", body: input,
-  // });
-  throw new Error("Not configured");
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.post<StudyPlan>(`/api/students/${studentId}/study-plan/regenerate`, input, { token });
 }
 
 /** Save the current plan as draft (student can edit before publishing) */
 export async function savePlanDraft(studentId: string, plan: StudyPlan): Promise<StudyPlan | null> {
   if (config.isMockMode) {
-    await wait(600);
+    await mockDelay();
     return { ...plan, status: "draft" };
   }
-  // return request<StudyPlan>(`/students/${studentId}/study-plan/draft`, { method: "POST", body: plan });
-  throw new Error("Not configured");
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.post<StudyPlan>(`/api/students/${studentId}/study-plan/draft`, plan, { token });
 }
 
 export async function publishPlan(studentId: string, planId: string): Promise<StudyPlan | null> {
   if (config.isMockMode) {
-    await wait(600);
-    return getStudyPlan(studentId);
+    await mockDelay();
+    const plan = buildMockPlan(studentId);
+    return { ...plan, id: planId, status: "published" };
   }
-  // return request<StudyPlan>(`/students/${studentId}/study-plan/${planId}/publish`, { method: "POST" });
-  throw new Error("Not configured");
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.post<StudyPlan>(
+    `/api/students/${studentId}/study-plan/${planId}/publish`,
+    undefined,
+    { token },
+  );
 }

@@ -113,3 +113,19 @@ export interface AuthSession {
   user: User;
   student_code: string;
 }
+
+// ── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationKind = "PLAN" | "ADVISOR" | "SYSTEM" | "GRADE";
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+  /** Deep link target, e.g. `/(app)/plan` */
+  href?: string;
+}

@@ -31,7 +31,8 @@
       "typedRoutes": false
     },
     "extra": {
-      "apiBaseUrl": ""
+      "apiBaseUrl": "",
+      "isMockMode": true
     }
   }
 }
