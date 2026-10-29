@@ -15,12 +15,24 @@ module.exports = {
         // darkMode: 'class' in NativeWind v4 out of the box).
         border: "hsl(214.3 31.8% 91.4%)",
         input: "hsl(214.3 31.8% 91.4%)",
-        ring: "hsl(20 90% 53%)",
+        ring: "#F36F21",
         background: "hsl(0 0% 100%)",
         foreground: "hsl(222.2 47.4% 11.2%)",
         primary: {
-          DEFAULT: "hsl(20 90% 53%)",
-          foreground: "hsl(0 0% 100%)",
+          // FPT orange. DEFAULT === brand-500 (#F36F21) so `bg-primary` and
+          // `bg-primary-500` render the exact same shade.
+          DEFAULT: "#F36F21",
+          foreground: "#FFFFFF",
+          50: "#FFF4ED",
+          100: "#FFE5D4",
+          200: "#FFC7A8",
+          300: "#FFA371",
+          400: "#FF7A39",
+          500: "#F36F21",
+          600: "#D85A11",
+          700: "#B5460D",
+          800: "#93370E",
+          900: "#772E0F",
         },
         secondary: {
           DEFAULT: "hsl(210 40% 96.1%)",

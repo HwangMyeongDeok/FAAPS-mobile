@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Animated, View } from "react-native";
 
 interface ProgressProps {
@@ -18,7 +18,9 @@ const colorMap = {
 
 export function Progress({ value = 0, max = 100, className, color = "primary" }: ProgressProps) {
   const clamped = Math.min(100, Math.max(0, (value / max) * 100));
-  const widthAnim = useRef(new Animated.Value(0)).current;
+  // `useState` (not `useRef`) so the Animated.Value is a plain value rather than
+  // a ref — reading it during render is then legal (react-hooks/refs).
+  const [widthAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(widthAnim, {
@@ -26,15 +28,23 @@ export function Progress({ value = 0, max = 100, className, color = "primary" }:
       duration: 600,
       useNativeDriver: false,
     }).start();
-  }, [clamped]);
+  }, [clamped, widthAnim]);
+
+  // Interpolate outside of render so no ref is accessed while rendering.
+  const width = useMemo(
+    () =>
+      widthAnim.interpolate({
+        inputRange: [0, 100],
+        outputRange: ["0%", "100%"],
+      }),
+    [widthAnim],
+  );
 
   return (
     <View className={cn("h-2 w-full overflow-hidden rounded-full bg-secondary", className)}>
       <Animated.View
         className={cn("h-full rounded-full", colorMap[color])}
-        style={{
-          width: widthAnim.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }),
-        }}
+        style={{ width }}
       />
     </View>
   );

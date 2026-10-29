@@ -2,7 +2,7 @@ import { Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Badge, Separator, Sheet } from "@/components/ui";
-import { courseTypeBadgeClass, courseTypeLabel, type CourseType } from "./CourseTypeIcon";
+import { courseTypeBadgeClass, courseTypeLabel } from "./CourseTypeIcon";
 import type { CourseItemData } from "./CourseItem";
 
 interface CourseDetailSheetProps {

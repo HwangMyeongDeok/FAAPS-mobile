@@ -1,11 +1,15 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useAuthStore } from "@/stores/auth";
 
 export default function AppLayout() {
   const status = useAuthStore((s) => s.status);
-  if (status !== "authenticated") return null;
+
+  // Auth guard — redirect instead of rendering `null` (which showed a blank
+  // white screen when deep-linking into a protected route while signed out).
+  if (status === "unknown") return null;
+  if (status !== "authenticated") return <Redirect href="/(auth)/sign-in" />;
 
   return (
     <Tabs

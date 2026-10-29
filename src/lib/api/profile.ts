@@ -7,6 +7,9 @@
  */
 import type { User, Student, Specialization, Major, CurriculumVersion, Advisor, StudentAdvisorAssignment } from "@/types";
 import { config } from "@/config/api";
+// Reserved for wiring the real backend — the endpoint call below is still
+// commented out, so ESLint would otherwise flag this as an unused import.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { request } from "@/lib/http";
 import {
   mockStudents, mockUsers, mockMajors, mockCurriculumVersions,

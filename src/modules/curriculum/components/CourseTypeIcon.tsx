@@ -16,22 +16,23 @@ const config: Record<CourseType, {
   iconName: string;
   bgClass: string;
   fgClass: string;
+  color: string;
   label: string;
 }> = {
-  CORE:      { iconName: "book-open-page-variant", bgClass: "bg-blue-100",   fgClass: "text-blue-700",   label: "Core"      },
-  ELECTIVE:  { iconName: "layers-triple",         bgClass: "bg-purple-100", fgClass: "text-purple-700", label: "Elective"  },
-  PRACTICUM: { iconName: "flask",                 bgClass: "bg-emerald-100",fgClass: "text-emerald-700",label: "Practicum" },
-  PROJECT:   { iconName: "school",                bgClass: "bg-amber-100",  fgClass: "text-amber-700",  label: "Project"   },
+  CORE:      { iconName: "book-open-page-variant", bgClass: "bg-blue-100",   fgClass: "text-blue-700",   color: "#1D4ED8", label: "Core"      },
+  ELECTIVE:  { iconName: "layers-triple",         bgClass: "bg-purple-100", fgClass: "text-purple-700", color: "#6D28D9", label: "Elective"  },
+  PRACTICUM: { iconName: "flask",                 bgClass: "bg-emerald-100",fgClass: "text-emerald-700",color: "#047857", label: "Practicum" },
+  PROJECT:   { iconName: "school",                bgClass: "bg-amber-100",  fgClass: "text-amber-700",  color: "#B45309", label: "Project"   },
 };
 
-export function CourseTypeIcon({ type, size = 18, bgClass, fgClass }: CourseTypeIconProps) {
+export function CourseTypeIcon({ type, size = 18, bgClass }: CourseTypeIconProps) {
   const c = config[type];
   return (
     <View className={`items-center justify-center rounded-lg p-2 ${bgClass ?? c.bgClass}`}>
       <MaterialCommunityIcons
         name={c.iconName as any}
         size={size}
-        color="currentColor"
+        color={c.color}
       />
     </View>
   );

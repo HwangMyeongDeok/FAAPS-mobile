@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { ChevronDown } from "lucide-react-native";
 

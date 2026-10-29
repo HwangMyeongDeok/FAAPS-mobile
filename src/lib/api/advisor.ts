@@ -1,10 +1,12 @@
 /**
  * Advisor service — advisor directory + per-student conversations.
  */
-import type { Advisor } from "@/types";
+import type { Advisor, User } from "@/types";
 import type { Conversation, Message } from "@/lib/db/mockDb";
-import type { User } from "@/types";
 import { config } from "@/config/api";
+// Reserved for wiring the real backend — the endpoint calls below are still
+// commented out, so ESLint would otherwise flag this as an unused import.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { request } from "@/lib/http";
 import { mockAdvisors, mockConversations, mockMessages, mockUsers } from "@/lib/db/mockDb";
 

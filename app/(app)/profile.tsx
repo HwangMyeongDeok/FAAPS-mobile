@@ -1,8 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Save } from "lucide-react-native";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -19,7 +18,6 @@ import { z } from "zod";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
-  profileKeys,
   useMyProfile,
   useUpdateMyProfile,
   useUpdateMySpecialization,
@@ -41,7 +39,6 @@ export default function ProfileScreen() {
   const { data, isLoading, isError } = useMyProfile(userId);
   const updateProfile = useUpdateMyProfile(userId!);
   const updateSpec = useUpdateMySpecialization(userId!);
-  const qc = useQueryClient();
 
   const [editing, setEditing] = useState(false);
 
@@ -54,6 +51,13 @@ export default function ProfileScreen() {
           phone: data.user.phone ?? "",
         }
       : undefined,
+  });
+
+  // `useWatch` instead of `form.watch()` — the latter returns a function that
+  // React Compiler cannot memoize safely (react-hooks/incompatible-library).
+  const [fullName, email, phone] = useWatch({
+    control: form.control,
+    name: ["full_name", "email", "phone"],
   });
 
   if (isLoading) {
@@ -88,7 +92,10 @@ export default function ProfileScreen() {
         right={
           <TouchableOpacity
             onPress={signOut}
-            className="flex-row items-center gap-1 rounded-full bg-red-50 px-3 py-2"
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            hitSlop={10}
+            className="flex-row items-center gap-1 rounded-full bg-red-50 px-3.5 py-2.5"
           >
             <LogOut {...({ size: 14, color: "#DC2626" } as any)} />
             <Text className="text-xs font-semibold text-red-600">Sign out</Text>
@@ -122,14 +129,14 @@ export default function ProfileScreen() {
           <Section title="Thông tin cơ bản">
             <Field
               label="Họ và tên"
-              value={form.watch("full_name")}
+              value={fullName ?? ""}
               editable={editing}
               onChangeText={(t) => form.setValue("full_name", t, { shouldValidate: true })}
               error={form.formState.errors.full_name?.message}
             />
             <Field
               label="Email"
-              value={form.watch("email")}
+              value={email ?? ""}
               editable={editing}
               onChangeText={(t) => form.setValue("email", t, { shouldValidate: true })}
               error={form.formState.errors.email?.message}
@@ -137,7 +144,7 @@ export default function ProfileScreen() {
             />
             <Field
               label="Số điện thoại"
-              value={form.watch("phone")}
+              value={phone ?? ""}
               editable={editing}
               onChangeText={(t) => form.setValue("phone", t, { shouldValidate: true })}
               error={form.formState.errors.phone?.message}
@@ -234,9 +241,11 @@ export default function ProfileScreen() {
               {data.specialization ? (
                 <TouchableOpacity
                   onPress={() => updateSpec.mutate(null)}
-                  className="self-start mt-1"
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  className="self-start mt-1 py-2"
                 >
-                  <Text className="text-xs text-slate-500 underline">
+                  <Text className="text-xs font-medium text-slate-500 underline">
                     Bỏ chọn chuyên ngành
                   </Text>
                 </TouchableOpacity>

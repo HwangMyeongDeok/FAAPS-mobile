@@ -1,4 +1,4 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Badge } from "@/components/ui";
@@ -19,7 +19,7 @@ export interface CourseItemData {
 
 interface CourseItemProps {
   course: CourseItemData;
-  /** When true the row is tappable (opens detail sheet) */
+  /** When provided the row becomes tappable and opens the course detail sheet. */
   onPress?: (course: CourseItemData) => void;
   /** Default: derived from `completed` */
   status?: CourseStatus;
@@ -48,12 +48,8 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
   const effectiveStatus = status ?? deriveStatus(course);
   const visual = statusVisuals[effectiveStatus];
 
-  return (
-    <View
-      // Note: onPress wrapping removed for simplicity. Add Pressable + onPress={...}
-      // if you need tappable items.
-      className="flex-row items-center gap-3 py-3"
-    >
+  const content = (
+    <>
       {/* Status icon */}
       <View
         className="h-9 w-9 items-center justify-center rounded-full"
@@ -85,6 +81,21 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
       <Badge variant={courseTypeBadgeClass(course.type)} className="px-2 py-0.5">
         {courseTypeLabel(course.type)}
       </Badge>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <View className="flex-row items-center gap-3 py-3">{content}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={() => onPress(course)}
+      accessibilityRole="button"
+      accessibilityLabel={`${course.course_code} ${course.name}`}
+      className="flex-row items-center gap-3 py-3"
+    >
+      {content}
+    </Pressable>
   );
 }

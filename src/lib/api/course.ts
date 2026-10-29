@@ -17,11 +17,12 @@ import type {
   PrerequisiteType,
 } from "@/types/course";
 import { config } from "@/config/api";
+// Reserved for wiring the real backend — the endpoint calls below are still
+// commented out, so ESLint would otherwise flag this as an unused import.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { request } from "@/lib/http";
 import {
   mockCurriculumCourses,
-  mockCurriculumVersions,
-  mockSpecializations,
   type CurriculumCourse,
 } from "@/lib/db/mockDb";
 
