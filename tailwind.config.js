@@ -71,9 +71,31 @@ module.exports = {
           800: "#93370E",
           900: "#772E0F",
         },
+
+        // ── FAAPS semantic tokens ────────────────────────────────────────────
+        // A warm "paper" ground (FPT orange's own material), white surfaces,
+        // warm hairlines and one warm-black ink. The orange accent stays
+        // reserved for data and the single primary action.
+        ground: { DEFAULT: "#FAF7F4", dark: "#12100E" },
+        surface: { DEFAULT: "#FFFFFF", dark: "#1B1815" },
+        raised: { DEFAULT: "#F2EDE7", dark: "#241F1B" },
+        line: { DEFAULT: "#EAE1D8", dark: "#302A24" },
+        rule: { DEFAULT: "#F3EDE6", dark: "#262019" },
+        ink: { DEFAULT: "#191512", dark: "#F7F2EC" },
+        "ink-muted": { DEFAULT: "#6A6058", dark: "#A79C93" },
+        "ink-faint": { DEFAULT: "#8B8178", dark: "#7D746C" },
+        "brand-tint": { DEFAULT: "#FFF1E7", dark: "#2E1C0E" },
+        "brand-ink": { DEFAULT: "#B5460D", dark: "#FFA371" },
       },
       fontFamily: {
-        sans: ["System"],
+        // Instrument Sans — the dealt typeface. Every weight is its own
+        // family because expo-font registers one family per font file.
+        sans: ["InstrumentSans_400Regular"],
+        "sans-medium": ["InstrumentSans_500Medium"],
+        "sans-semibold": ["InstrumentSans_600SemiBold"],
+        "sans-bold": ["InstrumentSans_700Bold"],
+        // Instrument Serif — the greeting only.
+        serif: ["InstrumentSerif_400Regular"],
       },
       borderRadius: {
         lg: "0.5rem",

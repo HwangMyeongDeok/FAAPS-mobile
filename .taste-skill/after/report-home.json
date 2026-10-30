@@ -1,0 +1,72 @@
+[
+ {
+  "level": "WARN",
+  "id": "palette-cream",
+  "width": 390,
+  "message": "Yellow-cream background (section #faf7f4).",
+  "fix": "Use the drawn palette. If you want warmth, take a low-chroma stone or bone, not a yellow cream."
+ },
+ {
+  "level": "FAIL",
+  "id": "contrast",
+  "width": 390,
+  "message": "Unreadable text: \"Xem chương trình khung\" 1.1:1 (#ffffff on #faf7f4)",
+  "fix": "Raise contrast to at least 4.5:1 for text, 3:1 for large display."
+ },
+ {
+  "level": "FAIL",
+  "id": "font-count",
+  "width": 390,
+  "message": "4 typefaces in use (InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSerif_400Regular).",
+  "fix": "Two at most: one display, one text. Often one is enough."
+ },
+ {
+  "level": "FAIL",
+  "id": "edge-text",
+  "width": 390,
+  "message": "3 text block(s) sit within 12px of the screen edge: \"Chào buổi chiều\" (0px from the left); \"Kỳ 5 đang mở 6 môn · 17 tín ch\" (0px from the left); \"FAAPS · Học viện FPT\" (0px from the left)",
+  "fix": "Keep text inside the page margin (16–20px). Only display type deliberately bled past the edge may touch it."
+ },
+ {
+  "level": "FAIL",
+  "id": "no-title",
+  "width": 390,
+  "message": "The screen has no h1.",
+  "fix": "Name the screen in an h1 at the top of the canvas (18–28px): \"Overview\", \"Payouts\", the project's name."
+ },
+ {
+  "level": "WARN",
+  "id": "palette-cream",
+  "width": 1440,
+  "message": "Yellow-cream background (section #faf7f4).",
+  "fix": "Use the drawn palette. If you want warmth, take a low-chroma stone or bone, not a yellow cream."
+ },
+ {
+  "level": "FAIL",
+  "id": "contrast",
+  "width": 1440,
+  "message": "Unreadable text: \"Xem chương trình khung\" 1.1:1 (#ffffff on #faf7f4)",
+  "fix": "Raise contrast to at least 4.5:1 for text, 3:1 for large display."
+ },
+ {
+  "level": "FAIL",
+  "id": "font-count",
+  "width": 1440,
+  "message": "4 typefaces in use (InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSerif_400Regular).",
+  "fix": "Two at most: one display, one text. Often one is enough."
+ },
+ {
+  "level": "FAIL",
+  "id": "edge-text",
+  "width": 1440,
+  "message": "3 text block(s) sit within 16px of the screen edge: \"Chào buổi chiều\" (0px from the left); \"Kỳ 5 đang mở 6 môn · 17 tín ch\" (0px from the left); \"FAAPS · Học viện FPT\" (0px from the left)",
+  "fix": "Keep text inside the page margin (16–32px or more). Only display type deliberately bled past the edge may touch it."
+ },
+ {
+  "level": "FAIL",
+  "id": "no-title",
+  "width": 1440,
+  "message": "The screen has no h1.",
+  "fix": "Name the screen in an h1 at the top of the canvas (18–28px): \"Overview\", \"Payouts\", the project's name."
+ }
+]
