@@ -10,7 +10,7 @@ export function Card({ className, ...props }: CardProps) {
     <View
       {...props}
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
+        "rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark",
         className
       )}
     />

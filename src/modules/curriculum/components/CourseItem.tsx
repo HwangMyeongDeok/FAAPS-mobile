@@ -32,8 +32,8 @@ const statusVisuals: Record<CourseStatus, {
 }> = {
   completed:   { iconName: "check-circle",     color: "#10B981", label: "Hoàn thành" },
   in_progress: { iconName: "progress-clock",    color: "#F59E0B", label: "Đang học"   },
-  available:   { iconName: "circle-outline",   color: "#94A3B8", label: "Sẵn sàng"   },
-  locked:      { iconName: "lock",             color: "#CBD5E1", label: "Bị khóa"    },
+  available:   { iconName: "circle-outline",   color: "#8B8178", label: "Sẵn sàng"   },
+  locked:      { iconName: "lock",             color: "#8B8178", label: "Bị khóa"    },
 };
 
 function deriveStatus(c: CourseItemData): CourseStatus {
@@ -67,13 +67,13 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
 
       {/* Title + meta */}
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-ink dark:text-ink-dark" numberOfLines={1}>
           {course.name}
         </Text>
         <View className="mt-1 flex-row items-center gap-1.5">
-          <Text className="text-xs text-muted-foreground">{course.course_code}</Text>
-          <Text className="text-xs text-muted-foreground">·</Text>
-          <Text className="text-xs text-muted-foreground">{course.credits} TC</Text>
+          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">{course.course_code}</Text>
+          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">·</Text>
+          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">{course.credits} TC</Text>
         </View>
       </View>
 
