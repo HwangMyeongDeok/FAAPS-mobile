@@ -6,3 +6,4 @@ export * from "./advisor";
 export * from "./appointments";
 export * from "./course";
 export * from "./notifications";
+export * from "./transcript";
