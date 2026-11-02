@@ -8,11 +8,14 @@ import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/stores/auth";
+import { useWebDarkMode } from "@/hooks/useWebDarkMode";
 
 export default function RootLayout() {
   // Boot the auth store from persistent storage on first mount.
   const hydrate = useAuthStore((s) => s.hydrate);
   const status = useAuthStore((s) => s.status);
+
+  useWebDarkMode();
 
   useEffect(() => {
     hydrate();

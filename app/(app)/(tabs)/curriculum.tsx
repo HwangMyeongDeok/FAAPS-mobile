@@ -53,6 +53,7 @@ export default function CurriculumScreen() {
       <ScreenHeader
         title="Chương trình khung"
         subtitle={profile.curriculum_version.name}
+        variant="legacy"
       />
 
       <ScrollView

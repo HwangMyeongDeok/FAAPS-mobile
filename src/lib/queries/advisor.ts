@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  createAdvisingRequest,
   getAdvisors,
   getConversations,
   getMessages,
@@ -64,6 +65,27 @@ export function useMarkConversationRead(conversationId: string) {
     mutationFn: () => markConversationRead(conversationId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: advisorKeys.messages(conversationId) });
+      const studentId = useAuthStore.getState().session?.user.id;
+      if (studentId) qc.invalidateQueries({ queryKey: advisorKeys.conversations(studentId) });
+    },
+  });
+}
+
+/**
+ * Create a new advising request. The conversation list is invalidated on
+ * success so the new thread appears at the top of the inbox, and the
+ * caller navigates straight into it.
+ */
+export function useCreateAdvisingRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      student_id: string;
+      advisor_id: string;
+      subject: string;
+      content: string;
+    }) => createAdvisingRequest(input),
+    onSuccess: () => {
       const studentId = useAuthStore.getState().session?.user.id;
       if (studentId) qc.invalidateQueries({ queryKey: advisorKeys.conversations(studentId) });
     },
