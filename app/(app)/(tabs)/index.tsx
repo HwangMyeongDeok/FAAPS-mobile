@@ -543,6 +543,54 @@ export default function HomeScreen() {
                   color={isDark ? "#A79C93" : "#8B8178"}
                 />
               </Pressable>
+
+              {/* Transcript — the official record behind the hero numbers. */}
+              <Pressable
+                onPress={() => router.push("/(app)/transcript")}
+                accessibilityRole="button"
+                accessibilityLabel="Mở bảng điểm và tiến độ học tập"
+                className="mt-3 flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
+              >
+                <View
+                  className="h-11 w-11 items-center justify-center rounded-2xl"
+                  style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+                >
+                  <MaterialCommunityIcons
+                    name="file-document-outline"
+                    size={22}
+                    color={isDark ? "#FFA371" : ORANGE}
+                  />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-ink dark:text-ink-dark">
+                    Bảng điểm & tiến độ
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
+                    {profile.student.current_gpa.toFixed(2)} GPA · {stats.earned}/{stats.total} tín chỉ · OJT
+                  </Text>
+                </View>
+
+                {profile.student.academic_status === "PROBATION" ? (
+                  <View
+                    className="rounded-full px-2.5 py-1"
+                    style={{ backgroundColor: isDark ? "#3A2A0A" : "#FEF3C7" }}
+                  >
+                    <Text
+                      className="text-[10px] font-bold"
+                      style={{ color: isDark ? "#FCD34D" : "#92400E" }}
+                    >
+                      Cảnh báo
+                    </Text>
+                  </View>
+                ) : null}
+
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color={isDark ? "#A79C93" : "#8B8178"}
+                />
+              </Pressable>
             </View>
 
             {/* ── 6. Advisor — the human behind the plan ──────────────── */}

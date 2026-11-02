@@ -146,7 +146,7 @@ export const mockStudents: Student[] = [
     current_semester: 5,
     current_gpa: 7.42,
     total_credits_earned: 70,
-    academic_status: "ACTIVE",
+    academic_status: "PROBATION",
   },
   {
     user_id: "u-student-4",
@@ -1104,5 +1104,114 @@ export const aiPromptSuggestions: { id: string; label: string; prompt: string }[
     id: "sg-4",
     label: "Chọn chuyên ngành",
     prompt: "Nên chọn chuyên ngành nào cho hồ sơ của tôi?",
+  },
+];
+
+// ── Transcript (FE-S-3) ──────────────────────────────────────────────────────
+
+export interface TranscriptCourseGrade {
+  course_code: string;
+  course_name: string;
+  credits: number;
+  /** Thang 10. */
+  grade: number;
+  status: "PASSED" | "FAILED";
+}
+
+export interface TranscriptSemester {
+  id: string;
+  /** "Fall 2024" — khớp nhãn học kỳ quen thuộc của sinh viên. */
+  label: string;
+  term_gpa: number;
+  courses: TranscriptCourseGrade[];
+}
+
+export type OjtStatus = "completed" | "in_progress" | "not_eligible";
+
+export interface TranscriptOjt {
+  status: OjtStatus;
+  course_code: string;
+  course_name: string;
+  company?: string | null;
+  mentor?: string | null;
+  /** 0–100, chỉ có khi đang thực hiện. */
+  progress_pct?: number | null;
+  note: string;
+}
+
+export interface StudentTranscript {
+  student_id: string;
+  semesters: TranscriptSemester[];
+  ojt: TranscriptOjt;
+}
+
+/**
+ * Bảng điểm của sinh viên demo (`u-student-duc`).
+ *
+ * Được dàn dựng để kể đúng câu chuyện PROBATION: 2 kỳ đầu Giỏi/Khá,
+ * Summer 2025 trượt 2 môn (WED301, STT301) nên GPA kỳ rơi xuống 5.75,
+ * Fall 2025 gượng lại 7.50. GPA tích lũy weighted = 7.42, khớp
+ * `mockStudents` để không lệch số với Trang chủ.
+ */
+export const mockTranscripts: StudentTranscript[] = [
+  {
+    student_id: "u-student-duc",
+    semesters: [
+      {
+        id: "t-fa2024",
+        label: "Fall 2024",
+        term_gpa: 8.39,
+        courses: [
+          { course_code: "PRM201", course_name: "Programming Fundamentals", credits: 4, grade: 9.0, status: "PASSED" },
+          { course_code: "MTH101", course_name: "Mathematics for Computing", credits: 3, grade: 8.0, status: "PASSED" },
+          { course_code: "ENG101", course_name: "English 1", credits: 3, grade: 8.5, status: "PASSED" },
+          { course_code: "PHY101", course_name: "Physics 1", credits: 3, grade: 7.5, status: "PASSED" },
+          { course_code: "SEM101", course_name: "Seminar 1", credits: 1, grade: 9.5, status: "PASSED" },
+        ],
+      },
+      {
+        id: "t-sp2025",
+        label: "Spring 2025",
+        term_gpa: 7.75,
+        courses: [
+          { course_code: "DBI202", course_name: "Database Systems", credits: 3, grade: 8.0, status: "PASSED" },
+          { course_code: "OSG202", course_name: "Operating Systems", credits: 3, grade: 7.0, status: "PASSED" },
+          { course_code: "DSA203", course_name: "Data Structures & Algorithms", credits: 4, grade: 8.5, status: "PASSED" },
+          { course_code: "MTH201", course_name: "Discrete Mathematics", credits: 3, grade: 7.0, status: "PASSED" },
+          { course_code: "SWP202", course_name: "Software Engineering Process", credits: 3, grade: 8.0, status: "PASSED" },
+        ],
+      },
+      {
+        id: "t-su2025",
+        label: "Summer 2025",
+        term_gpa: 5.75,
+        courses: [
+          { course_code: "WED301", course_name: "Web Application Development", credits: 3, grade: 4.5, status: "FAILED" },
+          { course_code: "CNM301", course_name: "Computer Networks", credits: 3, grade: 7.0, status: "PASSED" },
+          { course_code: "ITC301", course_name: "Introduction to Computers", credits: 3, grade: 7.5, status: "PASSED" },
+          { course_code: "STT301", course_name: "Statistics for Data Science", credits: 3, grade: 4.0, status: "FAILED" },
+        ],
+      },
+      {
+        id: "t-fa2025",
+        label: "Fall 2025",
+        term_gpa: 7.5,
+        courses: [
+          { course_code: "AIA301", course_name: "Artificial Intelligence", credits: 3, grade: 7.0, status: "PASSED" },
+          { course_code: "SRE301", course_name: "Software Engineering", credits: 4, grade: 7.5, status: "PASSED" },
+          { course_code: "MOB302", course_name: "Mobile Application Development", credits: 3, grade: 8.0, status: "PASSED" },
+          { course_code: "SEM401", course_name: "Seminar 2", credits: 1, grade: 7.5, status: "PASSED" },
+        ],
+      },
+    ],
+    ojt: {
+      status: "in_progress",
+      course_code: "OJT301",
+      course_name: "On-the-Job Training",
+      company: "FPT Software",
+      mentor: "Mentor: Anh Tuấn (FSU1.BU11)",
+      progress_pct: 60,
+      note: "Thực tập tại FPT Software · 15/09 – 15/12/2026",
+    },
   },
 ];

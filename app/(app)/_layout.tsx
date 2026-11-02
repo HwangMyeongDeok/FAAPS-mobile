@@ -30,6 +30,7 @@ export default function AppLayout() {
     >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="study-plan" />
+      <Stack.Screen name="transcript" />
       <Stack.Screen name="advising" />
       <Stack.Screen name="appointments" />
       <Stack.Screen name="notifications" />
