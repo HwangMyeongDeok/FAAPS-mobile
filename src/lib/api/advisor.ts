@@ -100,6 +100,57 @@ export async function sendMessage(conversationId: string, content: string): Prom
   return http.post<Message>(`/api/conversations/${conversationId}/messages`, { content }, { token });
 }
 
+/**
+ * Create a new advising request.
+ *
+ * A request IS a conversation: the subject is the conversation title, and
+ * the body of the question is its first message. Creating one therefore
+ * opens a thread the student can keep typing in.
+ */
+export async function createAdvisingRequest(input: {
+  student_id: string;
+  advisor_id: string;
+  subject: string;
+  content: string;
+}): Promise<Conversation> {
+  if (config.isMockMode) {
+    await mockDelay(900);
+    const now = new Date().toISOString();
+
+    const conversation: Conversation = {
+      id: `conv-${Date.now()}`,
+      student_id: input.student_id,
+      advisor_id: input.advisor_id,
+      subject: input.subject,
+      last_message_at: now,
+      // The only message so far is the student's own — nothing is unread.
+      unread_count: 0,
+      status: "active",
+    };
+    mockConversations.unshift(conversation);
+
+    const message: Message = {
+      id: `msg-${Date.now()}`,
+      conversation_id: conversation.id,
+      role: "student",
+      content: input.content,
+      sent_at: now,
+      read_at: null,
+    };
+    mockMessages.push(message);
+
+    return conversation;
+  }
+
+  // TODO: Wire BE later
+  const token = await getAuthToken();
+  return http.post<Conversation>(
+    `/api/students/${input.student_id}/advising-requests`,
+    { subject: input.subject, content: input.content, advisor_id: input.advisor_id },
+    { token },
+  );
+}
+
 export async function markConversationRead(conversationId: string): Promise<void> {
   if (config.isMockMode) {
     await mockDelay(200);

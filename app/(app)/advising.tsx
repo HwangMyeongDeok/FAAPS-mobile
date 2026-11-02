@@ -24,13 +24,17 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 
 import { ScreenHeader, goBack } from "@/components/ScreenHeader";
+import { Sheet } from "@/components/ui";
 import {
   useAdvisors,
   useConversations,
+  useCreateAdvisingRequest,
   useMarkConversationRead,
   useMessages,
   useSendMessage,
 } from "@/lib/queries/advisor";
+import { useMyProfile } from "@/lib/queries/profile";
+import { useAuthStore } from "@/stores/auth";
 import type { Conversation, Message } from "@/lib/db/mockDb";
 
 const ORANGE = "#F36F21";
@@ -59,6 +63,9 @@ function timeAgo(iso: string): string {
 
 export default function AdvisingScreen() {
   const { conversation } = useLocalSearchParams<{ conversation?: string }>();
+  const userId = useAuthStore((s) => s.session?.user.id ?? null);
+  const { data: profile } = useMyProfile(userId);
+  const { data: advisors = [] } = useAdvisors();
 
   // `activeId` is `null` when the user closed a thread, and follows the deep
   // link otherwise. Adjusting it during render (rather than in an effect)
@@ -70,6 +77,17 @@ export default function AdvisingScreen() {
     setActiveId(conversation ?? null);
   }
 
+  // The conversation just created by the student. It is kept here as well as
+  // in the mock DB so the screen can open the thread immediately, without
+  // waiting for the conversation list to refetch.
+  const [freshConversation, setFreshConversation] = useState<Conversation | null>(null);
+
+  // The composer sheet for a new advising request.
+  const [composing, setComposing] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [content, setContent] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
   const {
     data: conversations = [],
     isLoading,
@@ -79,11 +97,50 @@ export default function AdvisingScreen() {
   } = useConversations();
   const isDark = useColorScheme() === "dark";
 
+  const createRequest = useCreateAdvisingRequest();
+
   // A deep link may land on a conversation that is not the first one.
-  const active = useMemo(
-    () => conversations.find((c) => c.id === activeId) ?? null,
-    [conversations, activeId]
-  );
+  const active = useMemo(() => {
+    const fromList = conversations.find((c) => c.id === activeId);
+    if (fromList) return fromList;
+    // The freshly created conversation is not in the list yet.
+    if (freshConversation && freshConversation.id === activeId) return freshConversation;
+    return null;
+  }, [conversations, activeId, freshConversation]);
+
+  // The advisor the request goes to: the assigned one, else the first in
+  // the directory, else the demo default.
+  const advisorId =
+    profile?.advisor?.user.id ?? advisors[0]?.user.id ?? "u-advisor-1";
+
+  const onCreate = () => {
+    const title = subject.trim();
+    const body = content.trim();
+    if (!userId) return;
+    if (title.length < 5) {
+      setFormError("Chủ đề phải có ít nhất 5 ký tự.");
+      return;
+    }
+    if (body.length < 10) {
+      setFormError("Viết rõ nội dung câu hỏi (ít nhất 10 ký tự) để cố vấn hỗ trợ nhanh hơn.");
+      return;
+    }
+    setFormError(null);
+
+    createRequest.mutate(
+      { student_id: userId, advisor_id: advisorId, subject: title, content: body },
+      {
+        onSuccess: (created) => {
+          setFreshConversation(created);
+          setActiveId(created.id);
+          setComposing(false);
+          setSubject("");
+          setContent("");
+          setFormError(null);
+        },
+      },
+    );
+  };
 
   if (active) {
     return (
@@ -91,6 +148,7 @@ export default function AdvisingScreen() {
         conversation={active}
         onBack={() => {
           setActiveId(null);
+          setFreshConversation(null);
           // Drop the query param too, so a reload lands on the inbox
           // instead of reopening the thread.
           if (conversation) router.setParams({ conversation: undefined });
@@ -108,6 +166,21 @@ export default function AdvisingScreen() {
         title="Tư vấn cố vấn"
         subtitle="Trao đổi trực tiếp với advisor được phân công"
         onBack={goBack}
+        right={
+          <Pressable
+            onPress={() => {
+              setFormError(null);
+              setComposing(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Tạo yêu cầu tư vấn mới"
+            className="flex-row items-center gap-1.5 rounded-full px-3.5 py-2.5 active:opacity-80"
+            style={{ backgroundColor: ORANGE }}
+          >
+            <MaterialCommunityIcons name="plus" size={15} color="#FFFFFF" />
+            <Text className="text-xs font-bold text-white">Yêu cầu mới</Text>
+          </Pressable>
+        }
       />
 
       {isLoading ? (
@@ -154,6 +227,21 @@ export default function AdvisingScreen() {
                 Khi advisor phản hồi câu hỏi của bạn, cuộc trò chuyện sẽ xuất
                 hiện ở đây.
               </Text>
+              <Pressable
+                onPress={() => {
+                  setFormError(null);
+                  setComposing(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Tạo yêu cầu tư vấn mới"
+                className="mt-5 flex-row items-center gap-2 rounded-full px-5 py-3 active:opacity-85"
+                style={{ backgroundColor: ORANGE }}
+              >
+                <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                <Text className="text-sm font-bold text-white">
+                  Tạo yêu cầu tư vấn
+                </Text>
+              </Pressable>
             </View>
           }
           renderItem={({ item }) => (
@@ -164,6 +252,29 @@ export default function AdvisingScreen() {
           )}
         />
       )}
+
+      {/* ── New advising request sheet ── */}
+      <Sheet
+        open={composing}
+        onClose={() => {
+          setComposing(false);
+          setFormError(null);
+        }}
+        maxHeightRatio={0.9}
+        className="rounded-t-3xl"
+      >
+        <NewRequestSheet
+          subject={subject}
+          content={content}
+          error={formError}
+          isDark={isDark}
+          advisorName={profile?.advisor?.user.full_name ?? "Cố vấn của bạn"}
+          pending={createRequest.isPending}
+          onSubject={setSubject}
+          onContent={setContent}
+          onSubmit={onCreate}
+        />
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -401,6 +512,120 @@ function Bubble({ message }: { message: Message }) {
           {timeAgo(message.sent_at)}
         </Text>
       </View>
+    </View>
+  );
+}
+
+// ── New advising request sheet ───────────────────────────────────────────────
+
+/**
+ * The composer for a new advising request.
+ *
+ * A request IS a conversation: the subject becomes the thread title and the
+ * body becomes its first message. So the form is deliberately short — one
+ * title, one question — and the advisor is named at the top so the student
+ * knows who they are writing to before they send.
+ */
+function NewRequestSheet({
+  subject,
+  content,
+  error,
+  isDark,
+  advisorName,
+  pending,
+  onSubject,
+  onContent,
+  onSubmit,
+}: {
+  subject: string;
+  content: string;
+  error: string | null;
+  isDark: boolean;
+  advisorName: string;
+  pending: boolean;
+  onSubject: (v: string) => void;
+  onContent: (v: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <View>
+      {/* Header */}
+      <View className="flex-row items-center gap-3">
+        <View
+          className="h-12 w-12 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: ORANGE }}
+        >
+          <MaterialCommunityIcons name="message-plus-outline" size={22} color="#FFFFFF" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-lg font-bold text-ink dark:text-ink-dark">
+            Yêu cầu tư vấn mới
+          </Text>
+          <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark">
+            Gửi tới {advisorName}
+          </Text>
+        </View>
+      </View>
+
+      {/* Subject */}
+      <Text className="mb-1.5 mt-5 text-sm font-bold text-ink dark:text-ink-dark">
+        Chủ đề <Text style={{ color: ORANGE }}>*</Text>
+      </Text>
+      <TextInput
+        value={subject}
+        onChangeText={onSubject}
+        placeholder="VD: Xin tư vấn chọn môn cho kỳ 6"
+        placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+        autoCapitalize="sentences"
+        accessibilityLabel="Chủ đề yêu cầu tư vấn"
+        className="rounded-2xl border border-line px-4 py-3 text-[14px] leading-5 text-ink dark:border-line-dark dark:text-ink-dark"
+        style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
+      />
+
+      {/* Content */}
+      <Text className="mb-1.5 mt-4 text-sm font-bold text-ink dark:text-ink-dark">
+        Nội dung câu hỏi <Text style={{ color: ORANGE }}>*</Text>
+      </Text>
+      <TextInput
+        value={content}
+        onChangeText={onContent}
+        placeholder="Mô tả rõ bạn đang cần tư vấn gì, kèm ngữ cảnh (GPA hiện tại, môn đã học…)"
+        placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+        multiline
+        numberOfLines={5}
+        textAlignVertical="top"
+        accessibilityLabel="Nội dung câu hỏi"
+        className="min-h-[130px] rounded-2xl border border-line px-4 py-3 text-[14px] leading-5 text-ink dark:border-line-dark dark:text-ink-dark"
+        style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
+      />
+
+      {error ? (
+        <Text className="mt-1.5 text-xs font-semibold" style={{ color: "#DC2626" }}>
+          {error}
+        </Text>
+      ) : (
+        <Text className="mt-1.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
+          Cố vấn sẽ phản hồi trong 1–2 ngày làm việc
+        </Text>
+      )}
+
+      <Pressable
+        onPress={onSubmit}
+        disabled={pending}
+        accessibilityRole="button"
+        accessibilityLabel="Gửi yêu cầu tư vấn"
+        className="mt-5 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-85"
+        style={{ backgroundColor: ORANGE, opacity: pending ? 0.7 : 1 }}
+      >
+        {pending ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <>
+            <MaterialCommunityIcons name="send" size={17} color="#FFFFFF" />
+            <Text className="text-[15px] font-bold text-white">Gửi yêu cầu</Text>
+          </>
+        )}
+      </Pressable>
     </View>
   );
 }

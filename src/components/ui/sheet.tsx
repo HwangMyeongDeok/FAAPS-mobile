@@ -7,8 +7,9 @@ import {
   Pressable,
   ScrollView,
   useWindowDimensions,
-  View,
+    View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface SheetProps {
   open: boolean;
@@ -21,6 +22,9 @@ interface SheetProps {
 
 export function Sheet({ open, onClose, children, className, maxHeightRatio = 0.8 }: SheetProps) {
   const { height: SCREEN_H } = useWindowDimensions();
+  // The sheet floats over the tab bar, so it has to clear the home indicator
+  // itself — the screen's own safe area does not extend into the modal.
+  const insets = useSafeAreaInsets();
   // `useState` (not `useRef`) so the Animated.Value is a plain value rather than
   // a ref — reading it during render is then legal (react-hooks/refs).
   const [translateY] = useState(() => new Animated.Value(SCREEN_H));
@@ -60,20 +64,20 @@ export function Sheet({ open, onClose, children, className, maxHeightRatio = 0.8
             maxHeight: SCREEN_H * maxHeightRatio,
           }}
           className={cn(
-            "rounded-t-2xl bg-background border-t border-border",
+            "rounded-t-2xl border-t border-line bg-surface dark:border-line-dark dark:bg-surface-dark",
             className,
           )}
         >
           {/* Drag handle — tapping it closes the sheet. */}
           <Pressable onPress={onClose} className="pt-3 pb-1" hitSlop={12}>
-            <View className="self-center h-1 w-10 rounded-full bg-muted" />
+            <View className="self-center h-1 w-10 rounded-full bg-line dark:bg-line-dark" />
           </Pressable>
           {/* Scrollable body — keeps long content (course details, etc.) from
               overflowing the sheet on small screens. */}
           <ScrollView
             className="px-5"
             style={{ flexShrink: 1 }}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >

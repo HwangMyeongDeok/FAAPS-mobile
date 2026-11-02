@@ -107,6 +107,7 @@ function timeAgo(iso: string): string {
 
 export default function HomeScreen() {
   const userId = useAuthStore((s) => s.session?.user.id ?? null);
+  const isDark = useColorScheme() === "dark";
   const {
     data: profile,
     isLoading: profileLoading,
@@ -506,6 +507,42 @@ export default function HomeScreen() {
                   onPress={() => router.push("/(app)/appointments")}
                 />
               </View>
+
+              {/* The student's own editable plan — the one destination that
+                  only exists for them, so it gets its own full-width card
+                  instead of a third tile in the grid. */}
+              <Pressable
+                onPress={() => router.push("/(app)/study-plan")}
+                accessibilityRole="button"
+                accessibilityLabel="Mở kế hoạch học tập của tôi"
+                className="mt-3 flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
+              >
+                <View
+                  className="h-11 w-11 items-center justify-center rounded-2xl"
+                  style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+                >
+                  <MaterialCommunityIcons
+                    name="clipboard-text-clock-outline"
+                    size={22}
+                    color={isDark ? "#FFA371" : ORANGE}
+                  />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-ink dark:text-ink-dark">
+                    Kế hoạch học tập của tôi
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
+                    Sửa lộ trình từng kỳ · thêm hoặc bỏ môn
+                  </Text>
+                </View>
+
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color={isDark ? "#A79C93" : "#8B8178"}
+                />
+              </Pressable>
             </View>
 
             {/* ── 6. Advisor — the human behind the plan ──────────────── */}

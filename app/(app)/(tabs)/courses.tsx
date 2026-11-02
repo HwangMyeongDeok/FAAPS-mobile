@@ -107,7 +107,11 @@ export default function CoursesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={["top"]}>
-      <ScreenHeader title="Tra cứu môn học" subtitle="Tìm kiếm và xem chi tiết môn học" />
+      <ScreenHeader
+        title="Tra cứu môn học"
+        subtitle="Tìm kiếm và xem chi tiết môn học"
+        variant="legacy"
+      />
 
       <View className="px-4 pt-2 pb-3">
         {/* Search bar */}

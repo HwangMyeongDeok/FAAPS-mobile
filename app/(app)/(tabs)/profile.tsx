@@ -89,6 +89,7 @@ export default function ProfileScreen() {
       <ScreenHeader
         title="Hồ sơ cá nhân"
         subtitle="Quản lý thông tin cá nhân và chuyên ngành"
+        variant="legacy"
         right={
           <TouchableOpacity
             onPress={signOut}
