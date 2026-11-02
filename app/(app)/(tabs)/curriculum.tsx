@@ -25,16 +25,16 @@ export default function CurriculumScreen() {
 
   if (profileLoading || groupsLoading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background" edges={["top"]}>
-        <ActivityIndicator color="hsl(20 90% 53%)" />
+      <SafeAreaView className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark" edges={["top"]}>
+        <ActivityIndicator color="#F36F21" />
       </SafeAreaView>
     );
   }
 
   if (isError || !profile) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background" edges={["top"]}>
-        <Text className="text-destructive">Không tải được chương trình học.</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark" edges={["top"]}>
+        <Text className="text-red-500">Không tải được chương trình học.</Text>
       </SafeAreaView>
     );
   }
@@ -49,11 +49,10 @@ export default function CurriculumScreen() {
   const overallPercent = totalCredits === 0 ? 0 : Math.round((earnedCredits / totalCredits) * 100);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
         title="Chương trình khung"
         subtitle={profile.curriculum_version.name}
-        variant="legacy"
       />
 
       <ScrollView
@@ -61,9 +60,9 @@ export default function CurriculumScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}
       >
         {/* Overview card */}
-        <Card className="mb-4">
+        <Card className="mb-4 rounded-3xl border-line bg-surface shadow-none dark:border-line-dark dark:bg-surface-dark">
           <CardContent className="p-5">
-            <Text className="text-base font-semibold text-foreground mb-3">
+            <Text className="text-base font-semibold text-ink dark:text-ink-dark mb-3">
               Tổng quan chương trình
             </Text>
             <View className="flex-row gap-3">
@@ -96,17 +95,17 @@ export default function CurriculumScreen() {
         </Card>
 
         {/* Legend */}
-        <Card className="mb-4">
+        <Card className="mb-4 rounded-3xl border-line bg-surface shadow-none dark:border-line-dark dark:bg-surface-dark">
           <CardContent className="p-4 flex-row items-center gap-2 flex-wrap">
-            <Text className="text-xs text-muted-foreground mr-1">Chú thích:</Text>
+            <Text className="text-xs text-ink-muted dark:text-ink-muted-dark mr-1">Chú thích:</Text>
             <LegendDot color="#10B981" label="Hoàn thành" />
             <LegendDot color="#F59E0B" label="Đang học" />
-            <LegendDot color="#94A3B8" label="Sẵn sàng" />
+            <LegendDot color="#8B8178" label="Sẵn sàng" />
           </CardContent>
         </Card>
 
         {/* Semester blocks */}
-        <Text className="text-sm font-semibold text-foreground mb-3 px-1">
+        <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-3 px-1">
           Danh sách môn theo kỳ
         </Text>
         {groups.map((g) => (
@@ -121,7 +120,7 @@ export default function CurriculumScreen() {
           />
         ))}
 
-        <Text className="text-center text-xs text-muted-foreground mt-4">
+        <Text className="text-center text-xs text-ink-muted dark:text-ink-muted-dark mt-4">
           Nhấn vào mỗi môn để xem chi tiết & điều kiện tiên quyết.
         </Text>
       </ScrollView>
@@ -152,14 +151,18 @@ function Stat({
 }) {
   const color = tone === "primary" ? "#F36F21" : tone === "success" ? "#10B981" : "#F59E0B";
   const bg =
-    tone === "primary" ? "bg-primary/10" : tone === "success" ? "bg-emerald-100" : "bg-amber-100";
+    tone === "primary"
+      ? "bg-brand-tint dark:bg-brand-tint-dark"
+      : tone === "success"
+        ? "bg-emerald-100 dark:bg-emerald-900/30"
+        : "bg-amber-100 dark:bg-amber-900/30";
   return (
     <View className="flex-1">
-      <View className={`h-9 w-9 items-center justify-center rounded-lg ${bg}`}>
+      <View className={`h-9 w-9 items-center justify-center rounded-xl ${bg}`}>
         <MaterialCommunityIcons name={iconName as any} size={18} color={color} />
       </View>
-      <Text className="text-base font-bold text-foreground mt-2">{value}</Text>
-      <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={2}>
+      <Text className="text-base font-bold text-ink dark:text-ink-dark mt-2">{value}</Text>
+      <Text className="text-xs text-ink-muted dark:text-ink-muted-dark mt-0.5" numberOfLines={2}>
         {label}
       </Text>
     </View>
@@ -170,7 +173,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <View className="flex-row items-center gap-1.5">
       <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-      <Text className="text-xs text-foreground">{label}</Text>
+      <Text className="text-xs text-ink dark:text-ink-dark">{label}</Text>
     </View>
   );
 }

@@ -62,14 +62,14 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <SafeAreaView className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark">
         <ActivityIndicator color="#F36F21" />
       </SafeAreaView>
     );
   }
   if (isError || !data) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <SafeAreaView className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark">
         <Text className="text-red-500">Không tải được hồ sơ.</Text>
       </SafeAreaView>
     );
@@ -85,21 +85,20 @@ export default function ProfileScreen() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
         title="Hồ sơ cá nhân"
         subtitle="Quản lý thông tin cá nhân và chuyên ngành"
-        variant="legacy"
         right={
           <TouchableOpacity
             onPress={signOut}
             accessibilityRole="button"
             accessibilityLabel="Sign out"
             hitSlop={10}
-            className="flex-row items-center gap-1 rounded-full bg-red-50 px-3.5 py-2.5"
+            className="flex-row items-center gap-1 rounded-full bg-brand-tint px-3.5 py-2.5 dark:bg-brand-tint-dark"
           >
-            <LogOut {...({ size: 14, color: "#DC2626" } as any)} />
-            <Text className="text-xs font-semibold text-red-600">Sign out</Text>
+            <LogOut {...({ size: 14, color: "#B5460D" } as any)} />
+            <Text className="text-xs font-semibold text-brand-ink dark:text-brand-ink-dark">Sign out</Text>
           </TouchableOpacity>
         }
       />
@@ -110,17 +109,17 @@ export default function ProfileScreen() {
         <ScrollView className="flex-1 px-5 py-5" contentContainerStyle={{ paddingBottom: 60 }}>
           {/* Avatar & identity */}
           <View className="items-center mb-6">
-            <View className="h-24 w-24 rounded-full bg-primary-500 items-center justify-center mb-3 shadow-md">
+            <View className="h-24 w-24 rounded-full items-center justify-center mb-3" style={{ backgroundColor: "#F36F21" }}>
               <Text className="text-3xl font-bold text-white">
                 {data.user.full_name.charAt(0)}
               </Text>
             </View>
-            <Text className="text-lg font-bold text-slate-900 dark:text-white">
+            <Text className="text-lg font-bold text-ink dark:text-ink-dark">
               {data.user.full_name}
             </Text>
-            <Text className="text-sm text-slate-500">{data.user.email}</Text>
-            <View className="mt-2 rounded-full bg-green-100 px-3 py-1">
-              <Text className="text-xs font-medium text-green-700">
+            <Text className="text-sm text-ink-muted dark:text-ink-muted-dark">{data.user.email}</Text>
+            <View className="mt-2 rounded-full bg-green-100 px-3 py-1 dark:bg-green-900/30">
+              <Text className="text-xs font-medium text-green-700 dark:text-green-300">
                 {data.user.status}
               </Text>
             </View>
@@ -195,7 +194,7 @@ export default function ProfileScreen() {
 
           {/* Specialization (student-selectable) */}
           <Section title="Chuyên ngành hẹp (Specialization)">
-            <Text className="text-xs text-slate-500 mb-3">
+            <Text className="text-xs text-ink-muted dark:text-ink-muted-dark mb-3">
               Bạn có thể chọn một chuyên ngành hẹp phù hợp với curriculum hiện tại.
               Chuyên ngành sẽ giúp AI và advisor tư vấn chính xác hơn.
             </Text>
@@ -210,28 +209,29 @@ export default function ProfileScreen() {
                     className={[
                       "rounded-xl border p-3 flex-row items-start gap-3",
                       selected
-                        ? "border-primary-500 bg-primary-50"
-                        : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800",
+                        ? "border-[#F36F21] bg-brand-tint dark:bg-brand-tint-dark"
+                        : "border-line bg-surface dark:border-line-dark dark:bg-surface-dark",
                     ].join(" ")}
                   >
                     <View
                       className={[
                         "h-5 w-5 mt-0.5 rounded-full border-2 items-center justify-center",
                         selected
-                          ? "border-primary-500 bg-primary-500"
-                          : "border-slate-300",
+                          ? "border-[#F36F21]"
+                          : "border-line dark:border-line-dark",
                       ].join(" ")}
+                      style={selected ? { backgroundColor: "#F36F21" } : undefined}
                     >
                       {selected ? (
                         <View className="h-2 w-2 rounded-full bg-white" />
                       ) : null}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <Text className="text-sm font-semibold text-ink dark:text-ink-dark">
                         {sp.name}
                       </Text>
                       {sp.description ? (
-                        <Text className="text-xs text-slate-500 mt-1">
+                        <Text className="text-xs text-ink-muted dark:text-ink-muted-dark mt-1">
                           {sp.description}
                         </Text>
                       ) : null}
@@ -246,7 +246,7 @@ export default function ProfileScreen() {
                   accessibilityRole="button"
                   className="self-start mt-1 py-2"
                 >
-                  <Text className="text-xs font-medium text-slate-500 underline">
+                  <Text className="text-xs font-medium text-ink-muted dark:text-ink-muted-dark underline">
                     Bỏ chọn chuyên ngành
                   </Text>
                 </TouchableOpacity>
@@ -258,33 +258,33 @@ export default function ProfileScreen() {
           <Section title="Advisor được phân công">
             {data.advisor ? (
               <View className="flex-row items-center gap-3">
-                <View className="h-12 w-12 rounded-full bg-primary-100 items-center justify-center">
-                  <Text className="text-base font-bold text-primary-700">
+                <View className="h-12 w-12 rounded-full bg-brand-tint dark:bg-brand-tint-dark items-center justify-center">
+                  <Text className="text-base font-bold text-brand-ink dark:text-brand-ink-dark">
                     {data.advisor.user.full_name.charAt(0)}
                   </Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <Text className="text-sm font-semibold text-ink dark:text-ink-dark">
                     {data.advisor.user.full_name}
                   </Text>
-                  <Text className="text-xs text-slate-500">
+                  <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">
                     {data.advisor.user.email}
                   </Text>
                   {data.advisor.user.phone ? (
-                    <Text className="text-xs text-slate-400 mt-0.5">
+                    <Text className="text-xs text-ink-faint dark:text-ink-faint-dark mt-0.5">
                       {data.advisor.user.phone}
                     </Text>
                   ) : null}
                 </View>
               </View>
             ) : (
-              <Text className="text-sm text-slate-500">
+              <Text className="text-sm text-ink-muted dark:text-ink-muted-dark">
                 Chưa có advisor được phân công.
               </Text>
             )}
           </Section>
 
-          <Text className="text-center text-xs text-slate-400 mt-6">
+          <Text className="text-center text-xs text-ink-faint dark:text-ink-faint-dark mt-6">
             FAAPS © 2026 FPT University HCMC
           </Text>
         </ScrollView>
@@ -305,8 +305,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <View className="rounded-2xl bg-white dark:bg-slate-800 p-5 mb-5 border border-slate-100 dark:border-slate-700">
-      <Text className="text-base font-semibold text-slate-900 dark:text-white mb-4">
+    <View className="rounded-3xl bg-surface dark:bg-surface-dark p-5 mb-4 border border-line dark:border-line-dark">
+      <Text className="text-base font-semibold text-ink dark:text-ink-dark mb-4">
         {title}
       </Text>
       {children}
@@ -327,11 +327,11 @@ function Row({
     <View
       className={[
         "flex-row items-center justify-between py-2.5",
-        last ? "" : "border-b border-slate-100 dark:border-slate-700",
+        last ? "" : "border-b border-rule dark:border-rule-dark",
       ].join(" ")}
     >
-      <Text className="text-sm text-slate-500">{label}</Text>
-      <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+      <Text className="text-sm text-ink-muted dark:text-ink-muted-dark">{label}</Text>
+      <Text className="text-sm font-semibold text-ink dark:text-ink-dark">
         {value}
       </Text>
     </View>
@@ -356,19 +356,20 @@ function Field({
   last?: boolean;
 }) {
   return (
-    <View className={["py-2", last ? "" : "border-b border-slate-100 dark:border-slate-700"].join(" ")}>
-      <Text className="text-xs text-slate-500 mb-1.5">{label}</Text>
+    <View className={["py-2", last ? "" : "border-b border-rule dark:border-rule-dark"].join(" ")}>
+      <Text className="text-xs text-ink-muted dark:text-ink-muted-dark mb-1.5">{label}</Text>
       <TextInput
         editable={editable}
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType ?? "default"}
         autoCapitalize="none"
+        placeholderTextColor="#8B8178"
         className={[
-          "rounded-lg px-3 py-2 text-sm",
+          "rounded-xl px-3 py-2.5 text-sm",
           editable
-            ? "bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600"
-            : "text-slate-900 dark:text-white",
+            ? "bg-raised dark:bg-raised-dark text-ink dark:text-ink-dark border border-line dark:border-line-dark"
+            : "text-ink dark:text-ink-dark",
         ].join(" ")}
       />
       {error ? <Text className="text-xs text-red-500 mt-1">{error}</Text> : null}

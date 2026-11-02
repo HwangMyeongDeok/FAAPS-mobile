@@ -10,7 +10,7 @@ interface ProgressProps {
 }
 
 const colorMap = {
-  primary:    "bg-primary",
+  primary:    "bg-[#F36F21]",
   success:    "bg-emerald-500",
   warning:    "bg-amber-500",
   destructive:"bg-destructive",
@@ -41,7 +41,7 @@ export function Progress({ value = 0, max = 100, className, color = "primary" }:
   );
 
   return (
-    <View className={cn("h-2 w-full overflow-hidden rounded-full bg-secondary", className)}>
+    <View className={cn("h-2 w-full overflow-hidden rounded-full bg-raised dark:bg-raised-dark", className)}>
       <Animated.View
         className={cn("h-full rounded-full", colorMap[color])}
         style={{ width }}

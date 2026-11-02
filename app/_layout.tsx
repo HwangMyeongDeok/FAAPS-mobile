@@ -41,7 +41,7 @@ export default function RootLayout() {
         {status === "unknown" ? (
           // Wait for the persisted session to be restored before deciding
           // where to route — show a spinner instead of a blank screen.
-          <View className="flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900">
+          <View className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark">
             <ActivityIndicator color="#F36F21" size="large" />
           </View>
         ) : (

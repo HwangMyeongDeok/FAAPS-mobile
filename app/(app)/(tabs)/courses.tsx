@@ -106,21 +106,20 @@ export default function CoursesScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
         title="Tra cứu môn học"
         subtitle="Tìm kiếm và xem chi tiết môn học"
-        variant="legacy"
       />
 
       <View className="px-4 pt-2 pb-3">
         {/* Search bar */}
-        <View className="flex-row items-center gap-2 bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700">
-          <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
+        <View className="flex-row items-center gap-2 bg-surface dark:bg-surface-dark rounded-2xl px-3 py-2 border border-line dark:border-line-dark">
+          <MaterialCommunityIcons name="magnify" size={20} color="#8B8178" />
           <TextInput
-            className="flex-1 text-sm text-foreground placeholder:text-slate-400"
+            className="flex-1 text-sm text-ink dark:text-ink-dark"
             placeholder="Tìm theo mã hoặc tên môn..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#8B8178"
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -128,7 +127,7 @@ export default function CoursesScreen() {
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
-              <MaterialCommunityIcons name="close-circle" size={18} color="#94A3B8" />
+              <MaterialCommunityIcons name="close-circle" size={18} color="#8B8178" />
             </Pressable>
           )}
         </View>
@@ -147,17 +146,17 @@ export default function CoursesScreen() {
               hitSlop={10}
               accessibilityRole="button"
               accessibilityState={{ selected: activeFilter === item.key }}
-              className={`px-3.5 py-2.5 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3.5 py-2.5 rounded-full text-xs font-medium ${
                 activeFilter === item.key
-                  ? "bg-primary text-white"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                  ? "bg-[#F36F21] text-white"
+                  : "bg-surface dark:bg-surface-dark border border-line dark:border-line-dark"
               }`}
             >
               <Text
                 className={`text-xs font-medium ${
                   activeFilter === item.key
                     ? "text-white"
-                    : "text-slate-600 dark:text-slate-300"
+                    : "text-ink-muted dark:text-ink-muted-dark"
                 }`}
               >
                 {item.label}
@@ -192,8 +191,8 @@ export default function CoursesScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View className="items-center py-12">
-              <MaterialCommunityIcons name="book-search-outline" size={48} color="#CBD5E1" />
-              <Text className="text-slate-400 mt-3 text-sm">
+              <MaterialCommunityIcons name="book-search-outline" size={48} color="#8B8178" />
+              <Text className="text-ink-faint dark:text-ink-faint-dark mt-3 text-sm">
                 Không tìm thấy môn học nào.
               </Text>
             </View>
@@ -206,19 +205,19 @@ export default function CoursesScreen() {
 
       {/* Loading state */}
       {isLoading && (
-        <View className="absolute inset-0 items-center justify-center bg-slate-50/60 dark:bg-slate-900/60">
+        <View className="absolute inset-0 items-center justify-center bg-ground/60 dark:bg-ground-dark/60">
           <ActivityIndicator color="#F36F21" size="large" />
         </View>
       )}
 
       {/* Error state */}
       {isError && !isLoading && (
-        <View className="absolute inset-0 items-center justify-center bg-slate-50/80 dark:bg-slate-900/80">
+        <View className="absolute inset-0 items-center justify-center bg-ground/80 dark:bg-ground-dark/80">
           <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#EF4444" />
           <Text className="text-red-500 mt-3">Không tải được danh sách môn học.</Text>
           <Pressable
             onPress={() => refetch()}
-            className="mt-4 px-6 py-3 bg-primary rounded-xl"
+            className="mt-4 px-6 py-3 rounded-xl bg-[#F36F21]"
           >
             <Text className="text-white text-sm font-semibold">Thử lại</Text>
           </Pressable>
@@ -256,12 +255,12 @@ function CourseListItem({ course, onPress }: CourseListItemProps) {
   return (
     <Pressable
       onPress={() => onPress(course)}
-      className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700"
+      className="bg-surface dark:bg-surface-dark rounded-2xl p-4 border border-line dark:border-line-dark"
     >
       <View className="flex-row items-start gap-3">
         {/* Category indicator */}
         <View
-          className="h-10 w-10 items-center justify-center rounded-lg"
+          className="h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: catConfig.bgColor }}
         >
           <MaterialCommunityIcons
@@ -273,13 +272,13 @@ function CourseListItem({ course, onPress }: CourseListItemProps) {
 
         {/* Info */}
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-foreground" numberOfLines={2}>
+          <Text className="text-sm font-semibold text-ink dark:text-ink-dark" numberOfLines={2}>
             {course.name}
           </Text>
           <View className="flex-row items-center gap-2 mt-1">
-            <Text className="text-xs text-muted-foreground font-mono">{course.code}</Text>
-            <Text className="text-xs text-slate-300">·</Text>
-            <Text className="text-xs text-muted-foreground">{course.credits} tín chỉ</Text>
+            <Text className="text-xs text-ink-muted dark:text-ink-muted-dark font-mono">{course.code}</Text>
+            <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">·</Text>
+            <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">{course.credits} tín chỉ</Text>
           </View>
         </View>
 
@@ -317,7 +316,7 @@ function CourseDetailSheetWrapper({ courseId, onClose }: CourseDetailSheetWrappe
         <CourseDetailView course={course} />
       ) : (
         <View className="items-center py-8">
-          <Text className="text-muted-foreground">Không tìm được thông tin môn học.</Text>
+          <Text className="text-ink-muted dark:text-ink-muted-dark">Không tìm được thông tin môn học.</Text>
         </View>
       )}
     </Sheet>
@@ -352,10 +351,10 @@ function CourseDetailView({ course }: { course: NonNullable<Awaited<ReturnType<t
           />
         </View>
         <View className="flex-1">
-          <Text className="text-lg font-bold text-foreground" numberOfLines={2}>
+          <Text className="text-lg font-bold text-ink dark:text-ink-dark" numberOfLines={2}>
             {course.name}
           </Text>
-          <Text className="text-sm text-muted-foreground mt-0.5 font-mono">
+          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mt-0.5 font-mono">
             {course.code} · {course.credits} tín chỉ
           </Text>
         </View>
@@ -369,31 +368,31 @@ function CourseDetailView({ course }: { course: NonNullable<Awaited<ReturnType<t
       {/* Description */}
       {course.description && (
         <>
-          <Text className="text-sm font-semibold text-foreground mb-1">Mô tả</Text>
-          <Text className="text-sm text-muted-foreground mb-3">{course.description}</Text>
+          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-1">Mô tả</Text>
+          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mb-3">{course.description}</Text>
         </>
       )}
 
       {/* Objectives */}
       {course.objectives && (
         <>
-          <Text className="text-sm font-semibold text-foreground mb-1">Mục tiêu</Text>
-          <Text className="text-sm text-muted-foreground mb-3">{course.objectives}</Text>
+          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-1">Mục tiêu</Text>
+          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mb-3">{course.objectives}</Text>
         </>
       )}
 
       {/* Learning Outcomes */}
       {course.learning_outcomes && (
         <>
-          <Text className="text-sm font-semibold text-foreground mb-1">Kết quả học tập</Text>
-          <Text className="text-sm text-muted-foreground mb-3">{course.learning_outcomes}</Text>
+          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-1">Kết quả học tập</Text>
+          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mb-3">{course.learning_outcomes}</Text>
         </>
       )}
 
       <Separator className="my-3" />
 
       {/* Prerequisites */}
-      <Text className="text-sm font-semibold text-foreground mb-2">
+      <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-2">
         Điều kiện tiên quyết
       </Text>
       {course.prerequisites.length === 0 ? (
@@ -406,10 +405,10 @@ function CourseDetailView({ course }: { course: NonNullable<Awaited<ReturnType<t
           {course.prerequisites.map((prereq) => (
             <View
               key={prereq.id}
-              className="flex-row items-center gap-2 bg-slate-50 dark:bg-slate-700 rounded-lg px-3 py-2"
+              className="flex-row items-center gap-2 bg-raised dark:bg-raised-dark rounded-lg px-3 py-2"
             >
               <MaterialCommunityIcons name="arrow-up" size={14} color="#64748B" />
-              <Text className="text-sm text-foreground flex-1">
+              <Text className="text-sm text-ink dark:text-ink-dark flex-1">
                 {prereq.prerequisite_course.code} – {prereq.prerequisite_course.name}
               </Text>
               {prereq.minimum_score && (
@@ -425,17 +424,17 @@ function CourseDetailView({ course }: { course: NonNullable<Awaited<ReturnType<t
       {/* Required by (next courses) */}
       {course.required_by.length > 0 && (
         <>
-          <Text className="text-sm font-semibold text-foreground mb-2">
+          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-2">
             Là điều kiện cho
           </Text>
           <View className="gap-2 mb-3">
             {course.required_by.map((next) => (
               <View
                 key={next.id}
-                className="flex-row items-center gap-2 bg-slate-50 dark:bg-slate-700 rounded-lg px-3 py-2"
+                className="flex-row items-center gap-2 bg-raised dark:bg-raised-dark rounded-lg px-3 py-2"
               >
                 <MaterialCommunityIcons name="arrow-down" size={14} color="#F36F21" />
-                <Text className="text-sm text-foreground flex-1">
+                <Text className="text-sm text-ink dark:text-ink-dark flex-1">
                   {next.code} – {next.name}
                 </Text>
               </View>
@@ -447,17 +446,17 @@ function CourseDetailView({ course }: { course: NonNullable<Awaited<ReturnType<t
       {/* Co-requisites */}
       {course.co_requisites.length > 0 && (
         <>
-          <Text className="text-sm font-semibold text-foreground mb-2">
+          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-2">
             Học cùng kỳ
           </Text>
           <View className="gap-2 mb-3">
             {course.co_requisites.map((co) => (
               <View
                 key={co.id}
-                className="flex-row items-center gap-2 bg-slate-50 dark:bg-slate-700 rounded-lg px-3 py-2"
+                className="flex-row items-center gap-2 bg-raised dark:bg-raised-dark rounded-lg px-3 py-2"
               >
                 <MaterialCommunityIcons name="link-variant" size={14} color="#7C3AED" />
-                <Text className="text-sm text-foreground flex-1">
+                <Text className="text-sm text-ink dark:text-ink-dark flex-1">
                   {co.code} – {co.name}
                 </Text>
               </View>
