@@ -191,6 +191,7 @@ export default function HomeScreen() {
               </View>
               <NotifBell
                 unread={notifications.filter((n) => !n.read_at).length}
+                onPress={() => router.push("/(app)/notifications")}
               />
             </View>
 
@@ -326,6 +327,74 @@ export default function HomeScreen() {
               </View>
             </View>
 
+            {/* ── 2b. AI assistant — the core feature, one tap away ─── */}
+            <View className="px-5 pt-4">
+              <View
+                className="overflow-hidden rounded-[28px] border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
+              >
+                <View className="flex-row items-center gap-3 px-4 py-3.5">
+                  <View
+                    className="h-10 w-10 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: ORANGE }}
+                  >
+                    <MaterialCommunityIcons
+                      name="creation"
+                      size={20}
+                      color="#fff"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-bold text-ink dark:text-ink-dark">
+                      Trợ lý học tập AI
+                    </Text>
+                    <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
+                      Trả lời theo chương trình K19 · có dẫn nguồn
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row border-t border-rule dark:border-rule-dark">
+                  <Pressable
+                    onPress={() => router.push("/(app)/ai-chat")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Hỏi trợ lý học tập AI"
+                    className="flex-1 flex-row items-center justify-center gap-2 py-3.5 active:opacity-70"
+                  >
+                    <MaterialCommunityIcons
+                      name="message-text-outline"
+                      size={17}
+                      color={ORANGE}
+                    />
+                    <Text
+                      className="text-[13px] font-bold"
+                      style={{ color: ORANGE }}
+                    >
+                      Hỏi AI
+                    </Text>
+                  </Pressable>
+                  <View className="w-px bg-rule dark:bg-rule-dark" />
+                  <Pressable
+                    onPress={() => router.push("/(app)/ai-roadmap")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Xem lộ trình học tập AI"
+                    className="flex-1 flex-row items-center justify-center gap-2 py-3.5 active:opacity-70"
+                  >
+                    <MaterialCommunityIcons
+                      name="map-marker-path"
+                      size={17}
+                      color={ORANGE}
+                    />
+                    <Text
+                      className="text-[13px] font-bold"
+                      style={{ color: ORANGE }}
+                    >
+                      Lộ trình AI
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
             {/* ── 3. KPI strip: one card, hairline dividers (no icon tiles) ─ */}
             <View className="px-5 pt-4">
               <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
@@ -431,10 +500,10 @@ export default function HomeScreen() {
                   onPress={() => router.push("/(app)/profile")}
                 />
                 <QuickCard
-                  icon="email-outline"
-                  title="Advisor"
-                  desc={profile.advisor ? "Đang kết nối" : "Chưa phân công"}
-                  onPress={() => router.push("/(app)/profile")}
+                  icon="calendar-clock"
+                  title="Đặt lịch hẹn"
+                  desc={profile.advisor ? "Gặp advisor 1-1" : "Chưa phân công"}
+                  onPress={() => router.push("/(app)/appointments")}
                 />
               </View>
             </View>
@@ -477,8 +546,10 @@ export default function HomeScreen() {
                       </View>
                     </View>
                     <Pressable
+                      onPress={() => router.push("/(app)/advising")}
                       accessibilityRole="button"
-                      className="h-11 w-11 items-center justify-center rounded-full active:opacity-80"
+                      accessibilityLabel={`Chat với ${profile.advisor.user.full_name}`}
+                      className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
                       style={{ backgroundColor: ORANGE }}
                     >
                       <MaterialCommunityIcons
@@ -646,12 +717,21 @@ export default function HomeScreen() {
 
 // ─── Pieces ────────────────────────────────────────────────────────────────
 
-function NotifBell({ unread }: { unread: number }) {
+function NotifBell({
+  unread,
+  onPress,
+}: {
+  unread: number;
+  onPress: () => void;
+}) {
   return (
     <Pressable
+      onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Thông báo"
-      className="relative h-11 w-11 items-center justify-center rounded-full border border-line bg-surface active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
+      accessibilityLabel={
+        unread > 0 ? `Thông báo, ${unread} chưa đọc` : "Thông báo"
+      }
+      className="relative h-11 w-11 items-center justify-center rounded-full border border-line bg-surface active:opacity-70 dark:border-line-dark dark:bg-surface-dark"
     >
       <MaterialCommunityIcons name="bell-outline" size={20} color="#191512" />
       {unread > 0 && (

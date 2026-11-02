@@ -1,8 +1,17 @@
-import { Redirect, Tabs } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Redirect, Stack } from "expo-router";
 
 import { useAuthStore } from "@/stores/auth";
 
+/**
+ * FE-S-10 · FE-S-8 — screens that live above the tab bar.
+ *
+ * Why a Stack here instead of extra tabs: Expo Router v58 filters tab items
+ * down to the visible ones and *redirects* any focused route that has no
+ * visible tab trigger (see `useVisibleTabsWithRedirect`). Pushing to a
+ * `href: null` tab would bounce the user straight back to the first tab.
+ * A Stack sibling keeps these routes pushable and keeps the bottom bar to
+ * the four destinations that earn a permanent place.
+ */
 export default function AppLayout() {
   const status = useAuthStore((s) => s.status);
 
@@ -12,50 +21,20 @@ export default function AppLayout() {
   if (status !== "authenticated") return <Redirect href="/(auth)/sign-in" />;
 
   return (
-    <Tabs
+    <Stack
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#F36F21",
-        tabBarInactiveTintColor: "#64748B",
-        tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: "#E2E8F0",
-          backgroundColor: "white",
-          height: 64,
-          paddingTop: 6,
-          paddingBottom: 8,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        animation: "slide_from_right",
+        contentStyle: { backgroundColor: "transparent" },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Trang chủ",
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="home" size={24} color={color as string} />,
-        }}
-      />
-      <Tabs.Screen
-        name="courses"
-        options={{
-          title: "Môn học",
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="book-search" size={24} color={color as string} />,
-        }}
-      />
-      <Tabs.Screen
-        name="curriculum"
-        options={{
-          title: "Chương trình",
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="book-open" size={24} color={color as string} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Hồ sơ",
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account" size={24} color={color as string} />,
-        }}
-      />
-    </Tabs>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="study-plan" />
+      <Stack.Screen name="advising" />
+      <Stack.Screen name="appointments" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="ai-chat" />
+      <Stack.Screen name="ai-roadmap" />
+    </Stack>
   );
 }

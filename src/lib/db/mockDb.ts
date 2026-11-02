@@ -105,6 +105,12 @@ export const mockUsers: User[] = [
   },
 ];
 
+/**
+ * Students. `total_credits_earned` is the credits from the terms they have
+ * already finished — the same arithmetic the curriculum table produces
+ * (see `scripts/credit-audit.cjs`), so the home screen, the roadmap and
+ * the chat all quote one number.
+ */
 export const mockStudents: Student[] = [
   {
     user_id: "u-student-1",
@@ -115,7 +121,7 @@ export const mockStudents: Student[] = [
     expected_graduation_semester_id: "s-sp2030",
     current_semester: 5,
     current_gpa: 7.85,
-    total_credits_earned: 78,
+    total_credits_earned: 70,
     academic_status: "ACTIVE",
   },
   {
@@ -127,7 +133,7 @@ export const mockStudents: Student[] = [
     expected_graduation_semester_id: "s-su2030",
     current_semester: 7,
     current_gpa: 6.42,
-    total_credits_earned: 96,
+    total_credits_earned: 110,
     academic_status: "ACTIVE",
   },
   {
@@ -139,7 +145,7 @@ export const mockStudents: Student[] = [
     expected_graduation_semester_id: "s-sp2030",
     current_semester: 5,
     current_gpa: 7.42,
-    total_credits_earned: 80,
+    total_credits_earned: 70,
     academic_status: "ACTIVE",
   },
   {
@@ -151,7 +157,7 @@ export const mockStudents: Student[] = [
     expected_graduation_semester_id: "s-su2030",
     current_semester: 5,
     current_gpa: 8.1,
-    total_credits_earned: 82,
+    total_credits_earned: 70,
     academic_status: "ACTIVE",
   },
 ];
@@ -319,6 +325,7 @@ export const mockSemesters: Semester[] = [
   { id: "s-fa2027", label: "Fall 2027",   start_date: "2027-09-01", end_date: "2027-12-31", status: "upcoming"  },
   { id: "s-sp2028", label: "Spring 2028", start_date: "2028-01-01", end_date: "2028-05-31", status: "upcoming"  },
   { id: "s-su2028", label: "Summer 2028", start_date: "2028-06-01", end_date: "2028-08-31", status: "upcoming"  },
+  { id: "s-fa2028", label: "Fall 2028",   start_date: "2028-09-01", end_date: "2028-12-31", status: "upcoming"  },
 ];
 
 // ── Courses ─────────────────────────────────────────────────────────────────
@@ -353,7 +360,7 @@ const COURSE_SEED: {
   { code: "ENG101", name: "English 1",                       credits: 3, type: "CORE",      semester: 1, completed: true },
   { code: "PHY101", name: "Physics 1",                       credits: 3, type: "CORE",      semester: 1, completed: true },
   { code: "SEM101", name: "Seminar 1",                       credits: 1, type: "CORE",      semester: 1, completed: true },
-  { code: "GD101",  name: "Game Design Fundamentals",        credits: 3, type: "ELECTIVE",  semester: 1, completed: false },
+  { code: "GD101",  name: "Game Design Fundamentals",        credits: 3, type: "ELECTIVE",  semester: 1, completed: true },
 
   // Semester 2
   { code: "DBI202", name: "Database Systems",                credits: 3, type: "CORE",      semester: 2, completed: true },
@@ -361,22 +368,22 @@ const COURSE_SEED: {
   { code: "DSA203", name: "Data Structures & Algorithms",    credits: 4, type: "CORE",      semester: 2, completed: true },
   { code: "MTH201", name: "Discrete Mathematics",            credits: 3, type: "CORE",      semester: 2, completed: true },
   { code: "SWP202", name: "Software Engineering Process",    credits: 3, type: "CORE",      semester: 2, completed: true },
-  { code: "IMG202", name: "Digital Image Processing",        credits: 3, type: "ELECTIVE",  semester: 2, completed: false },
+  { code: "IMG202", name: "Digital Image Processing",        credits: 3, type: "ELECTIVE",  semester: 2, completed: true },
 
   // Semester 3
   { code: "WED301", name: "Web Application Development",     credits: 3, type: "CORE",      semester: 3, completed: true },
   { code: "CNM301", name: "Computer Networks",               credits: 3, type: "CORE",      semester: 3, completed: true },
   { code: "ITC301", name: "Introduction to Computers",       credits: 3, type: "CORE",      semester: 3, completed: true },
   { code: "STT301", name: "Statistics for Data Science",     credits: 3, type: "CORE",      semester: 3, completed: true },
-  { code: "HCI302", name: "Human-Computer Interaction",      credits: 3, type: "ELECTIVE",  semester: 3, completed: false },
+  { code: "HCI302", name: "Human-Computer Interaction",      credits: 3, type: "ELECTIVE",  semester: 3, completed: true },
   { code: "PRJ301", name: "Software Project 1",              credits: 2, type: "PRACTICUM", semester: 3, completed: true },
 
   // Semester 4
   { code: "AIA301", name: "Artificial Intelligence",         credits: 3, type: "CORE",      semester: 4, completed: true },
   { code: "SRE301", name: "Software Engineering",            credits: 4, type: "CORE",      semester: 4, completed: true },
   { code: "MOB302", name: "Mobile Application Development",  credits: 3, type: "CORE",      semester: 4, completed: true },
-  { code: "NWE302", name: "Network Programming",             credits: 3, type: "ELECTIVE",  semester: 4, completed: false },
-  { code: "DBT302", name: "Big Data Technologies",           credits: 3, type: "ELECTIVE",  semester: 4, completed: false },
+  { code: "NWE302", name: "Network Programming",             credits: 3, type: "ELECTIVE",  semester: 4, completed: true },
+  { code: "DBT302", name: "Big Data Technologies",           credits: 3, type: "ELECTIVE",  semester: 4, completed: true },
   { code: "SEM401", name: "Seminar 2",                       credits: 1, type: "CORE",      semester: 4, completed: true },
 
   // Semester 5
@@ -386,6 +393,7 @@ const COURSE_SEED: {
   { code: "CLD402", name: "Cloud Computing Fundamentals",    credits: 3, type: "CORE",      semester: 5, completed: false },
   { code: "ITC401", name: "Introduction to Cryptography",    credits: 3, type: "CORE",      semester: 5, completed: false },
   { code: "PRJ402", name: "Software Project 2",              credits: 2, type: "PRACTICUM", semester: 5, completed: false },
+  { code: "LAB501", name: "Software Quality Lab",            credits: 1, type: "PRACTICUM", semester: 5, completed: false },
 
   // Semester 6
   { code: "NLP501", name: "Natural Language Processing",     credits: 3, type: "ELECTIVE",  semester: 6, completed: false },
@@ -394,6 +402,8 @@ const COURSE_SEED: {
   { code: "MGT502", name: "Software Project Management",     credits: 3, type: "CORE",      semester: 6, completed: false },
   { code: "DVP502", name: "DevOps Practices",                credits: 3, type: "ELECTIVE",  semester: 6, completed: false },
   { code: "IOT502", name: "Internet of Things",              credits: 3, type: "ELECTIVE",  semester: 6, completed: false },
+  { code: "SEC502", name: "Web Application Security",        credits: 3, type: "CORE",      semester: 6, completed: false },
+  { code: "SEM601", name: "Seminar 3",                       credits: 1, type: "CORE",      semester: 6, completed: false },
 
   // Semester 7
   { code: "CAP401", name: "Capstone Project I",              credits: 4, type: "PROJECT",   semester: 7, completed: false },
@@ -410,7 +420,7 @@ const COURSE_SEED: {
   { code: "FIN603", name: "Enterprise Systems",              credits: 3, type: "ELECTIVE",  semester: 8, completed: false },
   { code: "PRJ602", name: "Practical Training 2",            credits: 2, type: "PRACTICUM", semester: 8, completed: false },
   { code: "GRD701", name: "Graduation Project",              credits: 3, type: "PROJECT",   semester: 8, completed: false },
-  { code: "SEM801", name: "Seminar 3",                       credits: 1, type: "CORE",      semester: 8, completed: false },
+  { code: "SEM801", name: "Seminar 4",                       credits: 1, type: "CORE",      semester: 8, completed: false },
   { code: "ENT803", name: "Entrepreneurship for Engineers",   credits: 3, type: "ELECTIVE",  semester: 8, completed: false },
 ];
 
@@ -686,7 +696,7 @@ export const mockNotifications: AppNotification[] = [
     body: "Thầy Thông đã trả lời câu hỏi về kế hoạch học tập.",
     created_at: new Date(Date.now() - 12 * MIN).toISOString(),
     read_at: null,
-    href: "/(app)/messages/conv-1",
+    href: "/(app)/advising?conversation=conv-1",
   },
   {
     id: "n-2",
@@ -696,7 +706,7 @@ export const mockNotifications: AppNotification[] = [
     body: "AI đã sinh lại kế hoạch dựa trên GPA mới nhất của bạn.",
     created_at: new Date(Date.now() - 3 * HOUR).toISOString(),
     read_at: null,
-    href: "/(app)/plan",
+    href: "/(app)/notifications",
   },
   {
     id: "n-3",
@@ -725,7 +735,7 @@ export const mockNotifications: AppNotification[] = [
     body: "Hạn đăng ký môn học kỳ Spring 2027 còn 5 ngày.",
     created_at: new Date(Date.now() - 3 * DAY).toISOString(),
     read_at: null,
-    href: "/(app)/plan",
+    href: "/(app)/notifications",
   },
   {
     id: "n-6",
@@ -781,7 +791,7 @@ export const mockNotifications: AppNotification[] = [
     body: "Thầy Thông đã trả lời về việc đăng ký môn điện tử.",
     created_at: new Date(Date.now() - 40 * MIN).toISOString(),
     read_at: null,
-    href: "/(app)/messages/conv-3",
+    href: "/(app)/advising?conversation=conv-3",
   },
   {
     id: "n-12",
@@ -791,7 +801,7 @@ export const mockNotifications: AppNotification[] = [
     body: "AI đã sinh lại kế hoạch dựa trên GPA mới nhất của bạn.",
     created_at: new Date(Date.now() - 5 * HOUR).toISOString(),
     read_at: null,
-    href: "/(app)/plan",
+    href: "/(app)/notifications",
   },
   {
     id: "n-13",
@@ -828,7 +838,7 @@ export const mockNotifications: AppNotification[] = [
     body: "Thầy Thông đã phản hồi về học phần môn tiên quyết.",
     created_at: new Date(Date.now() - 2 * HOUR).toISOString(),
     read_at: null,
-    href: "/(app)/messages/conv-5",
+    href: "/(app)/advising?conversation=conv-5",
   },
   {
     id: "n-17",
@@ -848,7 +858,7 @@ export const mockNotifications: AppNotification[] = [
     body: "Cô Linh đã gửi lộ trình học Data Science.",
     created_at: new Date(Date.now() - 30 * MIN).toISOString(),
     read_at: null,
-    href: "/(app)/messages/conv-4",
+    href: "/(app)/advising?conversation=conv-4",
   },
   {
     id: "n-19",
@@ -858,7 +868,7 @@ export const mockNotifications: AppNotification[] = [
     body: "Hạn đăng ký môn học kỳ Spring 2027 còn 7 ngày.",
     created_at: new Date(Date.now() - 9 * HOUR).toISOString(),
     read_at: null,
-    href: "/(app)/plan",
+    href: "/(app)/notifications",
   },
   {
     id: "n-20",
@@ -868,5 +878,231 @@ export const mockNotifications: AppNotification[] = [
     body: "Bắt đầu khám phá các tính năng của FAAPS Mobile.",
     created_at: new Date(Date.now() - 2 * DAY).toISOString(),
     read_at: new Date(Date.now() - 2 * DAY).toISOString(),
+  },
+];
+
+// ── AI Assistant ─────────────────────────────────────────────────────────────
+//
+// The seed thread below is what a student sees the first time they open
+// `/(app)/ai-chat`. Every claim the assistant makes there is grounded in
+// the curriculum table above (course codes, credit counts, term numbers),
+// so the answers and the roadmap agree with each other.
+
+/** Documents the assistant is allowed to cite. */
+export interface AiSourceDoc {
+  id: string;
+  kind: "curriculum" | "syllabus" | "regulation" | "advisor";
+  title: string;
+  locator: string;
+  excerpt: string;
+}
+
+export const aiSourceDocs: AiSourceDoc[] = [
+  {
+    id: "src-reg-k19",
+    kind: "regulation",
+    title: "Quy chế đào tạo K19",
+    locator: "Điều 12 · Tín chỉ và tiên quyết",
+    excerpt:
+      "Sinh viên phải đạt điểm từ 5.00 trở lên ở môn tiên quyết mới được đăng ký môn phụ thuộc.",
+  },
+  {
+    id: "src-reg-credit",
+    kind: "regulation",
+    title: "Quy chế học phần FPT",
+    locator: "Mục 2.3 · Khối lượng học tập",
+    excerpt:
+      "Mỗi học kỳ sinh viên đăng ký tối thiểu 14 và tối đa 22 tín chỉ, trừ kỳ thực tập.",
+  },
+  {
+    id: "src-cv-k19",
+    kind: "curriculum",
+    title: "Chương trình khung K19",
+    locator: "Bảng môn học · Kỳ 5–8",
+    excerpt:
+      "Tổng khối lượng chương trình Software Engineering là 150 tín chỉ trong 8 kỳ.",
+  },
+  {
+    id: "src-syl-mld",
+    kind: "syllabus",
+    title: "Syllabus MLD401 — Machine Learning",
+    locator: "Mục 3 · Đánh giá môn học",
+    excerpt:
+      "Điểm gồm 40% bài tập, 30% đồ án giữa kỳ và 30% đồ án cuối kỳ trình bày nhóm.",
+  },
+  {
+    id: "src-syl-cap",
+    kind: "syllabus",
+    title: "Syllabus CAP401 — Capstone Project I",
+    locator: "Mục 2 · Yêu cầu đầu ra",
+    excerpt:
+      "Nhóm tối thiểu 3 sinh viên, phải bảo vệ giữa kỳ và nộp báo cáo kỹ thuật tối thiểu 40 trang.",
+  },
+  {
+    id: "src-adv-thong",
+    kind: "advisor",
+    title: "Ghi chú cố vấn Nguyễn Trí Thông",
+    locator: "Buổi tư vấn · 18/10/2026",
+    excerpt:
+      "Với GPA 7.42 ở kỳ 4, nên học MLD401 và DLP401 song song để kịp lấy chuyên ngành AI.",
+  },
+];
+
+export interface AiChatMessageShape {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  sent_at: string;
+  sources?: AiSourceRef[];
+  rating?: "up" | "down" | null;
+}
+
+export interface AiSourceRef {
+  index: number;
+  doc_id: string;
+  note: string;
+}
+
+/** The seed thread for the signed-in demo student (`u-student-duc`). */
+export const mockAiThreads: Record<string, AiChatMessageShape[]> = {
+  "u-student-duc": [
+    {
+      id: "ai-m1",
+      role: "user",
+      content: "Tôi còn 80 tín chỉ và đang ở kỳ 5. Học kỳ tới nên học môn nào?",
+      sent_at: new Date(Date.now() - 26 * MIN).toISOString(),
+    },
+    {
+      id: "ai-m2",
+      role: "assistant",
+      content:
+        "Bạn còn 80 tín chỉ, cần hoàn thành trong 4 kỳ tới — trung bình 20 tín chỉ mỗi kỳ, nằm trong giới hạn 14–22 tín chỉ của quy chế.\n\nKỳ 5 nên học 5 môn lõi: Machine Learning (MLD401), Deep Learning (DLP401), Cloud Computing (CLD402), Introduction to Cryptography (ITC401) và Software Project 2 (PRJ402). Đây là cặp môn AI mà cố vấn Thông khuyên học song song, vì cả hai đều là tiên quyết cho Capstone Project ở kỳ 7.\n\nLưu ý: quy chế yêu cầu điểm môn tiên quyết từ 5.00 trở lên. Vì vậy tôi xếp DLP401 sau MLD401 trong cùng kỳ — nếu bạn trượt MLD401, bạn vẫn học được DLP401 ở kỳ 6 mà không mất thêm học phần.",
+      sent_at: new Date(Date.now() - 26 * MIN).toISOString(),
+      sources: [
+        {
+          index: 1,
+          doc_id: "src-adv-thong",
+          note: "Cố vấn khuyên học MLD401 và DLP401 song song để kịp lấy chuyên ngành AI.",
+        },
+        {
+          index: 2,
+          doc_id: "src-reg-credit",
+          note: "Kỳ học phải từ 14 đến 22 tín chỉ.",
+        },
+        {
+          index: 3,
+          doc_id: "src-reg-k19",
+          note: "Điểm tiên quyết tối thiểu 5.00 để đăng ký môn phụ thuộc.",
+        },
+      ],
+      rating: "up",
+    },
+    {
+      id: "ai-m3",
+      role: "user",
+      content: "Điểm MLD401 của tôi sẽ là 8.5 thì có đủ điều kiện học Capstone không?",
+      sent_at: new Date(Date.now() - 18 * MIN).toISOString(),
+    },
+    {
+      id: "ai-m4",
+      role: "assistant",
+      content:
+        "Chưa đủ một mình. Điều kiện để đăng ký CAP401 là đạt tổng 4 môn tiên quyết với điểm trung bình tối thiểu 7.00, và mỗi môn không dưới 5.00.\n\nVới 8.5 ở MLD401, bạn đã có một điểm rất tốt. Nhưng DLP401, CLD402 và ITC401 mới tính tới — bạn cần trung bình ít nhất 6.17 trong ba môn đó để đạt ngưỡng.\n\nLộ trình của tôi để CLD402 và DLP401 vào kỳ 5, ITC401 vào kỳ 6. Nếu bạn giữ điểm trên 7.5 ở cả hai môn kỳ 5, bạn sẽ đủ điều kiện vào kỳ 7 với biên an toàn khoảng 0.4 điểm.",
+      sent_at: new Date(Date.now() - 18 * MIN).toISOString(),
+      sources: [
+        {
+          index: 1,
+          doc_id: "src-reg-k19",
+          note: "Điều kiện tiên quyết của CAP401: trung bình 4 môn tiên quyết tối thiểu 7.00.",
+        },
+        {
+          index: 2,
+          doc_id: "src-syl-cap",
+          note: "Capstone bắt buộc có giữa kỳ và báo cáo kỹ thuật tối thiểu 40 trang.",
+        },
+      ],
+      rating: null,
+    },
+  ],
+  "u-student-1": [
+    {
+      id: "ai-m1",
+      role: "user",
+      content: "Tôi đang phân vân giữa chuyên ngành AI và Cloud. Gợi ý giúp tôi với.",
+      sent_at: new Date(Date.now() - 3 * HOUR).toISOString(),
+    },
+    {
+      id: "ai-m2",
+      role: "assistant",
+      content:
+        "Với GPA 7.85 hiện tại, cả hai hướng đều mở. Chuyên ngành AI đòi hỏi thêm 3 môn lý thuyết nặng (MLD401, DLP401, NLP501), còn Cloud đi theo hướng thực hành hơn (CLD402, DVP502, IOT502).\n\nNếu mục tiêu của bạn là đi làm về mô hình và nghiên cứu, chọn AI. Nếu bạn thích vận hành hệ thống và hạ tầng, chọn Cloud.\n\nLưu ý thực tế: hai hướng dùng chung CAP401 và PRJ601 ở kỳ 7, nên bạn chỉ cần chốt hướng trước kỳ 6 để kịp đăng ký môn chuyên ngành.",
+      sent_at: new Date(Date.now() - 3 * HOUR).toISOString(),
+      sources: [
+        {
+          index: 1,
+          doc_id: "src-cv-k19",
+          note: "Môn chuyên ngành AI và Cloud đều mở ở kỳ 5–6.",
+        },
+        {
+          index: 2,
+          doc_id: "src-adv-thong",
+          note: "Cố vấn gợi ý chốt chuyên ngành trước kỳ 6.",
+        },
+      ],
+      rating: null,
+    },
+  ],
+  "u-student-2": [
+    {
+      id: "ai-m1",
+      role: "user",
+      content: "Tôi có GPA 6.42, có kịp tốt nghiệp không?",
+      sent_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+    },
+    {
+      id: "ai-m2",
+      role: "assistant",
+      content:
+        "Vẫn kịp. Bạn đang ở kỳ 7 với 40 tín chỉ còn lại — đúng 2 kỳ nữa (18 và 22 tín chỉ), cả hai đều trong giới hạn 22 tín chỉ.\n\nRủi ro không nằm ở khối lượng mà ở điểm. CAP402 yêu cầu trung bình 4 môn tiên quyết tối thiểu 7.00 để đủ điều kiện bảo vệ. Với GPA 6.42, bạn cần cải thiện kỳ 7 lên khoảng 7.5 để đạt ngưỡng.\n\nTôi đã điều chỉnh lộ trình: đưa MGT502 (Project Management) vào kỳ 8 thay vì kỳ 7, để bạn có thêm một môn dễ cải thiện điểm khi lịch học kỳ 7 đã kín.",
+      sent_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+      sources: [
+        {
+          index: 1,
+          doc_id: "src-cv-k19",
+          note: "Kỳ 7–8 còn 40 tín chỉ, chia đều 18 và 22.",
+        },
+        {
+          index: 2,
+          doc_id: "src-reg-k19",
+          note: "Ngưỡng tiên quyết 7.00 cho môn bảo vệ.",
+        },
+      ],
+      rating: null,
+    },
+  ],
+  "u-student-4": [],
+};
+
+/** Ready-made prompts shown under the composer before the first question. */
+export const aiPromptSuggestions: { id: string; label: string; prompt: string }[] = [
+  {
+    id: "sg-1",
+    label: "Môn nào cho kỳ tới?",
+    prompt: "Tôi nên học những môn nào cho kỳ tới?",
+  },
+  {
+    id: "sg-2",
+    label: "Điều kiện tiên quyết",
+    prompt: "Điều kiện tiên quyết để học môn tiếp theo là gì?",
+  },
+  {
+    id: "sg-3",
+    label: "Còn thiếu bao nhiêu tín chỉ?",
+    prompt: "Tôi còn thiếu bao nhiêu tín chỉ để tốt nghiệp?",
+  },
+  {
+    id: "sg-4",
+    label: "Chọn chuyên ngành",
+    prompt: "Nên chọn chuyên ngành nào cho hồ sơ của tôi?",
   },
 ];

@@ -149,7 +149,15 @@ export default function CoursesScreen() {
                   : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
               }`}
             >
-              {item.label}
+              <Text
+                className={`text-xs font-medium ${
+                  activeFilter === item.key
+                    ? "text-white"
+                    : "text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                {item.label}
+              </Text>
             </Pressable>
           )}
         />
