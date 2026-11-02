@@ -51,7 +51,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "check:routes": "node scripts/check-routes.cjs",
+    "check:credits": "node scripts/credit-audit.cjs",
+    "check:roadmap": "node scripts/roadmap-audit.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }
