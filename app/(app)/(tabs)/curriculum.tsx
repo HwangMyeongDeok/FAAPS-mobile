@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
@@ -9,23 +15,29 @@ import {
   SemesterBlock,
   CourseDetailSheet,
   useCompletedCourseIds,
-  useCourseLookup,
   useGroupedCourses,
+  type CourseCurriculumMeta,
   type CourseItemData,
 } from "@/modules/curriculum";
 import { useMyProfile } from "@/lib/queries/profile";
 
 export default function CurriculumScreen() {
-  const { data: profile, isLoading: profileLoading } = useMyProfile();
-  const { groups, isLoading: groupsLoading, isError } = useGroupedCourses(
-    profile?.currentSemester,
-  );
-  const courseLookup = useCourseLookup();
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } =
+    useMyProfile();
+  const {
+    groups,
+    isLoading: groupsLoading,
+    isError,
+    refetch: refetchGroups,
+  } = useGroupedCourses(profile?.currentSemester);
   const completedCodes = useCompletedCourseIds();
 
-  const [selectedCourse, setSelectedCourse] = useState<CourseItemData | null>(
-    null,
-  );
+  // The detail sheet works on the course *id*, so it can fetch the full
+  // record (description, objectives, learning outcomes, prerequisites) from
+  // the API — the same sheet the course catalogue tab uses.
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseMeta, setSelectedCourseMeta] =
+    useState<CourseCurriculumMeta | null>(null);
 
   const totalCourses = groups.reduce((s, g) => s + g.courses.length, 0);
   const completedCourses = groups.reduce(
@@ -73,7 +85,24 @@ export default function CurriculumScreen() {
         className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark"
         edges={["top"]}
       >
-        <Text className="text-red-500">Could not load the curriculum.</Text>
+        <MaterialCommunityIcons
+          name="cloud-off-outline"
+          size={40}
+          color="#CBD5E1"
+        />
+        <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
+          Could not load the curriculum.
+        </Text>
+        <Pressable
+          onPress={() => {
+            refetchProfile();
+            refetchGroups();
+          }}
+          className="mt-4 rounded-full px-6 py-3 active:opacity-80"
+          style={{ backgroundColor: "#F36F21" }}
+        >
+          <Text className="text-sm font-bold text-white">Try again</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -161,7 +190,15 @@ export default function CurriculumScreen() {
             earnedCredits={g.earnedCredits}
             status={g.status}
             courses={g.courses}
-            onCoursePress={(c) => setSelectedCourse(c)}
+            onCoursePress={(c) => {
+              setSelectedCourseId(c.id);
+              setSelectedCourseMeta({
+                semester: c.semester,
+                mandatory: c.mandatory,
+                groupName: c.groupName,
+                completed: c.completed,
+              });
+            }}
           />
         ))}
 
@@ -171,9 +208,12 @@ export default function CurriculumScreen() {
       </ScrollView>
 
       <CourseDetailSheet
-        course={selectedCourse}
-        courseLookup={courseLookup}
-        onClose={() => setSelectedCourse(null)}
+        courseId={selectedCourseId}
+        curriculumMeta={selectedCourseMeta ?? undefined}
+        onClose={() => {
+          setSelectedCourseId(null);
+          setSelectedCourseMeta(null);
+        }}
       />
     </SafeAreaView>
   );

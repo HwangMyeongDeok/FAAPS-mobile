@@ -24,6 +24,19 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * True when the backend answered 404 — "this record does not exist".
+ *
+ * This is a *valid state*, not a failure: a student with no advisor
+ * assigned, or a roadmap that has never been generated, legitimately
+ * produces a 404. Anything else — a 500, a timeout, an offline device — is
+ * a real failure and must reach the UI so it can offer a retry instead of
+ * silently pretending the data does not exist.
+ */
+export function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
 export interface RequestOptions<TBody> {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: TBody;

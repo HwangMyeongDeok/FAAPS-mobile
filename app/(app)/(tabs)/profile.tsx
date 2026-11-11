@@ -31,7 +31,11 @@ export default function ProfileScreen() {
   const signOut = useAuthStore((s) => s.signOut);
 
   const { data, isLoading, isError } = useMyProfile();
-  const { data: advisor } = useMyAdvisor();
+  const {
+    data: advisor,
+    isError: advisorError,
+    refetch: refetchAdvisor,
+  } = useMyAdvisor();
   const updateProfile = useUpdateMyProfile();
 
   const [editing, setEditing] = useState(false);
@@ -196,7 +200,22 @@ export default function ProfileScreen() {
 
           {/* Assigned advisor */}
           <Section title="Assigned advisor">
-            {advisor ? (
+            {advisorError ? (
+              // A network/server failure — not "you have no advisor".
+              <View className="flex-row items-center gap-3">
+                <Text className="flex-1 text-sm text-ink-muted dark:text-ink-muted-dark">
+                  Could not load your advisor. Check your connection.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => refetchAdvisor()}
+                  className="rounded-full bg-brand-tint px-3 py-1.5 active:opacity-70 dark:bg-brand-tint-dark"
+                >
+                  <Text className="text-xs font-bold text-brand-ink dark:text-brand-ink-dark">
+                    Try again
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : advisor ? (
               <View className="flex-row items-center gap-3">
                 <View className="h-12 w-12 rounded-full bg-brand-tint dark:bg-brand-tint-dark items-center justify-center">
                   <Text className="text-base font-bold text-brand-ink dark:text-brand-ink-dark">

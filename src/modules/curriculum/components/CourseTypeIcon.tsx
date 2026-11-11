@@ -110,3 +110,24 @@ export const courseTypeBadgeClass = (
       return "default";
   }
 };
+
+/**
+ * The badge variant for a course category.
+ *
+ * Same mapping as `courseTypeBadgeClass`, but it also allows the
+ * `destructive` variant so the signature matches the one the screens use.
+ */
+export function categoryBadgeVariant(
+  category?: string | null,
+): "default" | "secondary" | "success" | "warning" | "destructive" {
+  switch (courseCategoryVisual(category).iconName) {
+    case "layers-triple":
+      return "secondary";
+    case "flask":
+      return "success";
+    case "school":
+      return "warning";
+    default:
+      return "default";
+  }
+}

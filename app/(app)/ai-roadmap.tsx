@@ -96,7 +96,9 @@ export default function AiRoadmapScreen() {
     );
   }
 
-  if (isError || !roadmap) {
+  if (isError) {
+    // A real failure — the server timed out, returned 500, or the device is
+    // offline. The student gets a retry instead of an empty screen.
     return (
       <SafeAreaView
         className="flex-1 bg-ground dark:bg-ground-dark"
@@ -122,6 +124,58 @@ export default function AiRoadmapScreen() {
             style={{ backgroundColor: ORANGE }}
           >
             <Text className="text-sm font-bold text-white">Try again</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!roadmap) {
+    // The assistant has not produced a plan for this student yet (404).
+    // That is not an error — it is an invitation to generate one.
+    return (
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
+        <RoadmapHeader
+          isDark={isDark}
+          isRegenerating={regenerate.isPending}
+          onRegenerate={onRegenerate}
+        />
+        <View className="flex-1 items-center justify-center px-8">
+          <View
+            className="h-16 w-16 items-center justify-center rounded-full"
+            style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFE5D4" }}
+          >
+            <MaterialCommunityIcons name="robot-outline" size={30} color={ORANGE} />
+          </View>
+          <Text className="mt-4 text-center text-base font-bold text-ink dark:text-ink-dark">
+            No roadmap yet
+          </Text>
+          <Text className="mt-1 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
+            Let the assistant lay out your remaining semesters based on your
+            progress so far.
+          </Text>
+          <Pressable
+            onPress={onRegenerate}
+            disabled={regenerate.isPending}
+            className="mt-5 flex-row items-center gap-2 rounded-full px-6 py-3 active:opacity-80"
+            style={{
+              backgroundColor: ORANGE,
+              opacity: regenerate.isPending ? 0.6 : 1,
+            }}
+          >
+            {regenerate.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="auto-fix" size={18} color="#fff" />
+                <Text className="text-sm font-bold text-white">
+                  Generate my roadmap
+                </Text>
+              </>
+            )}
           </Pressable>
         </View>
       </SafeAreaView>

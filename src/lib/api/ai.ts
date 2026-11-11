@@ -2,7 +2,7 @@
  * AI Assistant service — the conversational thread and the generated roadmap.
  */
 import { config } from "@/config/api";
-import { http } from "@/lib/http";
+import { http, isNotFoundError } from "@/lib/http";
 import type {
   AiChatMessage,
   AiConversation,
@@ -67,12 +67,20 @@ export async function rateAiMessage(
   );
 }
 
-/** `GET /api/student/ai/roadmap` */
+/**
+ * `GET /api/student/ai/roadmap`
+ *
+ * A 404 means the assistant has not generated a roadmap for this student
+ * yet — a normal state, resolved to `null`. Any other failure is rethrown
+ * so the screen can show a retry button instead of an empty roadmap that
+ * looks like "nothing to show".
+ */
 export async function getAiRoadmap(): Promise<AiRoadmap | null> {
   try {
     return await http.get<AiRoadmap>("/api/student/ai/roadmap");
-  } catch {
-    return null;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
   }
 }
 

@@ -120,7 +120,11 @@ export default function HomeScreen() {
     refetch: refetchProfile,
   } = useMyProfile();
   const { data: progress, refetch: refetchProgress } = useMyProgress();
-  const { data: advisor, refetch: refetchAdvisor } = useMyAdvisor();
+  const {
+    data: advisor,
+    isError: advisorError,
+    refetch: refetchAdvisor,
+  } = useMyAdvisor();
   const { data: notifications, refetch: refetchNotifs } = useNotifications();
   const { data: unreadCount = 0, refetch: refetchUnread } = useUnreadCount();
   const { data: coursesData, refetch: refetchCourses } = useCourses({ size: 6 });
@@ -590,7 +594,34 @@ export default function HomeScreen() {
         <View className="px-5 pt-6">
           <SectionTitle title="Your advisor" />
           <View className="mt-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
-            {advisor ? (
+            {advisorError ? (
+              // The advisor could not be fetched — a network/server failure,
+              // not "you have no advisor". Offer a retry.
+              <View className="flex-row items-center gap-3">
+                <MaterialCommunityIcons
+                  name="cloud-off-outline"
+                  size={24}
+                  color="#94A3B8"
+                />
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-ink dark:text-ink-dark">
+                    Could not load your advisor
+                  </Text>
+                  <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark">
+                    Check your connection and try again.
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => refetchAdvisor()}
+                  hitSlop={8}
+                  className="rounded-full bg-raised px-3 py-1.5 active:opacity-70 dark:bg-raised-dark"
+                >
+                  <Text className="text-xs font-bold text-brand-ink dark:text-brand-ink-dark">
+                    Try again
+                  </Text>
+                </Pressable>
+              </View>
+            ) : advisor ? (
               <View className="flex-row items-center gap-3">
                 <View
                   className="items-center justify-center rounded-full"

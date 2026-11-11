@@ -22,10 +22,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { Badge, Separator, Sheet } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useCourseDetail, useCourses } from "@/lib/queries/course";
-import { courseCategoryVisual } from "@/modules/curriculum";
+import { useCourses } from "@/lib/queries/course";
+import {
+  CourseDetailSheet,
+  categoryBadgeVariant,
+  courseCategoryVisual,
+} from "@/modules/curriculum";
 import type { Course } from "@/types/course";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,8 +186,8 @@ export default function CoursesScreen() {
         </View>
       )}
 
-      {/* Course detail sheet */}
-      <CourseDetailSheetWrapper
+      {/* Course detail sheet — the same sheet the curriculum tab opens. */}
+      <CourseDetailSheet
         courseId={selectedCourseId}
         onClose={handleCloseDetail}
       />
@@ -254,170 +258,8 @@ function CourseListItem({ course, onPress }: CourseListItemProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Course Detail Sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface CourseDetailSheetWrapperProps {
-  courseId: string | null;
-  onClose: () => void;
-}
-
-function CourseDetailSheetWrapper({
-  courseId,
-  onClose,
-}: CourseDetailSheetWrapperProps) {
-  const { data: detail, isLoading } = useCourseDetail(courseId);
-
-  return (
-    <Sheet open={!!courseId} onClose={onClose}>
-      {isLoading ? (
-        <View className="items-center py-8">
-          <ActivityIndicator color="#F36F21" />
-        </View>
-      ) : detail ? (
-        <CourseDetailView detail={detail} />
-      ) : (
-        <View className="items-center py-8">
-          <Text className="text-ink-muted dark:text-ink-muted-dark">
-            Course information not found.
-          </Text>
-        </View>
-      )}
-    </Sheet>
-  );
-}
-
-function CourseDetailView({
-  detail,
-}: {
-  detail: NonNullable<
-    Awaited<ReturnType<typeof useCourseDetail>>["data"]
-  >;
-}) {
-  const { course, prerequisites } = detail;
-  const cat = courseCategoryVisual(course.category);
-
-  return (
-    <View>
-      {/* Header */}
-      <View className="flex-row items-start gap-3 mb-4">
-        <View
-          className="h-12 w-12 items-center justify-center rounded-xl"
-          style={{ backgroundColor: `${cat.color}1A` }}
-        >
-          <MaterialCommunityIcons
-            name={cat.iconName as any}
-            size={24}
-            color={cat.color}
-          />
-        </View>
-        <View className="flex-1">
-          <Text
-            className="text-lg font-bold text-ink dark:text-ink-dark"
-            numberOfLines={2}
-          >
-            {course.name}
-          </Text>
-          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mt-0.5 font-mono">
-            {course.code} · {course.credits} credits
-          </Text>
-        </View>
-        <Badge variant={categoryBadgeVariant(course.category)}>{cat.label}</Badge>
-      </View>
-
-      <Separator className="my-3" />
-
-      {/* Description */}
-      {course.description ? (
-        <>
-          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-1">
-            Description
-          </Text>
-          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mb-3">
-            {course.description}
-          </Text>
-        </>
-      ) : null}
-
-      {/* Objectives */}
-      {course.objectives ? (
-        <>
-          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-1">
-            Objectives
-          </Text>
-          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mb-3">
-            {course.objectives}
-          </Text>
-        </>
-      ) : null}
-
-      {/* Learning Outcomes */}
-      {course.learningOutcomes ? (
-        <>
-          <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-1">
-            Learning outcomes
-          </Text>
-          <Text className="text-sm text-ink-muted dark:text-ink-muted-dark mb-3">
-            {course.learningOutcomes}
-          </Text>
-        </>
-      ) : null}
-
-      <Separator className="my-3" />
-
-      {/* Prerequisites */}
-      <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-2">
-        Prerequisites
-      </Text>
-      {prerequisites.length === 0 ? (
-        <View className="flex-row items-center gap-2 mb-3">
-          <MaterialCommunityIcons name="check-circle" size={16} color="#10B981" />
-          <Text className="text-sm text-emerald-600">
-            No prerequisites required.
-          </Text>
-        </View>
-      ) : (
-        <View className="gap-2 mb-3">
-          {prerequisites.map((prereq) => (
-            <View
-              key={prereq.id}
-              className="flex-row items-center gap-2 bg-raised dark:bg-raised-dark rounded-lg px-3 py-2"
-            >
-              <MaterialCommunityIcons name="arrow-up" size={14} color="#64748B" />
-              <Text className="text-sm text-ink dark:text-ink-dark flex-1">
-                {prereq.courseCode} – {prereq.courseName}
-              </Text>
-              {prereq.minimumScore != null && (
-                <Badge variant="secondary" className="px-1.5 py-0">
-                  ≥ {prereq.minimumScore}
-                </Badge>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-function categoryBadgeVariant(
-  category?: string | null,
-): "default" | "secondary" | "success" | "warning" | "destructive" {
-  switch (courseCategoryVisual(category).iconName) {
-    case "layers-triple":
-      return "secondary";
-    case "flask":
-      return "success";
-    case "school":
-      return "warning";
-    default:
-      return "default";
-  }
-}
 
 // ── Simple debounce hook ─────────────────────────────────────────────────────
 

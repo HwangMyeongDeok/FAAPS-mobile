@@ -13,9 +13,10 @@
  *   • `PUT  /api/appointments/{id}/cancel`
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -144,7 +145,12 @@ function monthCells(cursor: Date): Date[] {
 
 export default function AppointmentsScreen() {
   const isDark = useColorScheme() === "dark";
-  const { data: advisor } = useMyAdvisor();
+  const {
+    data: advisor,
+    isLoading: advisorLoading,
+    isError: advisorError,
+    refetch: refetchAdvisor,
+  } = useMyAdvisor();
 
   const todayISO = useMemo(() => toISODate(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(todayISO);
@@ -156,6 +162,7 @@ export default function AppointmentsScreen() {
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [justBookedId, setJustBooked] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const [cancelTarget, setCancelTarget] = useState<BookedAppointment | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -163,13 +170,27 @@ export default function AppointmentsScreen() {
 
   const advisorId = advisor?.id;
 
+  /**
+   * True only when the advisor really is absent — the request succeeded and
+   * the student has none. While the request is still running (or failed) the
+   * advisor is simply unknown, which is a different thing.
+   */
+  const hasNoAdvisor = !advisorLoading && !advisorError && !advisor;
+
+  // The toast clears itself — the user should never have to dismiss it.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const {
     data: slots = [],
     isLoading: slotsLoading,
     isError: slotsError,
     refetch: refetchSlots,
     isRefetching: slotsRefetching,
-  } = useAvailability(selectedDate, advisorId);
+  } = useAvailability(selectedDate, advisorId, !hasNoAdvisor && !advisorError);
   const {
     data: appointments = [],
     isLoading: apptsLoading,
@@ -204,6 +225,7 @@ export default function AppointmentsScreen() {
 
   const refreshing = slotsRefetching || apptsRefetching;
   const onRefresh = () => {
+    refetchAdvisor();
     refetchSlots();
     refetchAppts();
   };
@@ -219,6 +241,22 @@ export default function AppointmentsScreen() {
 
   const confirmBooking = () => {
     if (!selectedSlot) return;
+
+    // Booking without an advisor would fail on the server anyway, so it
+    // never reaches the API. The student is told who to contact instead.
+    if (!advisorId) {
+      // The booking sheet is a modal, so an in-screen toast would be hidden
+      // behind it — an alert always reaches the student.
+      Alert.alert(
+        "No advisor assigned",
+        "You don't have an assigned advisor yet. Please contact the admin.",
+      );
+      setToast(
+        "You don't have an assigned advisor yet. Please contact the admin.",
+      );
+      return;
+    }
+
     const r = reason.trim();
     if (r.length < 10) {
       setReasonError(
@@ -238,6 +276,13 @@ export default function AppointmentsScreen() {
           setSelectedSlot(null);
           setReason("");
           setJustBooked(appt.id);
+        },
+        onError: (error) => {
+          setToast(
+            error instanceof Error && error.message
+              ? error.message
+              : "The booking failed. Please try again.",
+          );
         },
       },
     );
@@ -300,49 +345,111 @@ export default function AppointmentsScreen() {
       >
         {/* ── Advisor strip ── */}
         <View className="px-5 pt-4">
-          <View className="flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
+          {advisorError ? (
+            // The advisor could not be loaded — that is a network/server
+            // failure, so the student gets a retry instead of a silent
+            // "no advisor" state.
+            <View className="flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
+              <MaterialCommunityIcons
+                name="cloud-off-outline"
+                size={26}
+                color="#94A3B8"
+              />
+              <View className="flex-1">
+                <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
+                  Could not load your advisor
+                </Text>
+                <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark">
+                  Check your connection and try again.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => refetchAdvisor()}
+                hitSlop={8}
+                className="rounded-full px-3 py-1.5"
+                style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+              >
+                <Text
+                  className="text-xs font-bold"
+                  style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                >
+                  Try again
+                </Text>
+              </Pressable>
+            </View>
+          ) : advisorLoading ? (
+            <View className="flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
+              <ActivityIndicator color={ORANGE} />
+              <Text className="text-sm text-ink-muted dark:text-ink-muted-dark">
+                Loading your advisor…
+              </Text>
+            </View>
+          ) : (
+            <View className="flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
+              <View
+                className="items-center justify-center rounded-full"
+                style={{
+                  width: 52,
+                  height: 52,
+                  backgroundColor: isDark ? "#2E1C0E" : "#FFE5D4",
+                }}
+              >
+                <Text
+                  className="text-lg font-bold"
+                  style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                >
+                  {advisor ? initials(advisor.fullName) : "AD"}
+                </Text>
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-[15px] font-bold text-ink dark:text-ink-dark"
+                  numberOfLines={1}
+                >
+                  {advisor?.fullName ?? "Your advisor"}
+                </Text>
+                <Text
+                  className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark"
+                  numberOfLines={1}
+                >
+                  {advisor?.email ?? "Contact the Academic Office to get an advisor"}
+                </Text>
+                {advisor?.specialization ? (
+                  <View className="mt-1.5 flex-row items-center gap-1">
+                    <MaterialCommunityIcons
+                      name="briefcase-outline"
+                      size={13}
+                      color={ORANGE}
+                    />
+                    <Text className="text-[11px] font-semibold text-ink-muted dark:text-ink-muted-dark">
+                      {advisor.specialization}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          )}
+
+          {/* No advisor yet — booking is blocked, so say it up front. */}
+          {hasNoAdvisor ? (
             <View
-              className="items-center justify-center rounded-full"
-              style={{
-                width: 52,
-                height: 52,
-                backgroundColor: isDark ? "#2E1C0E" : "#FFE5D4",
-              }}
+              className="mt-3 flex-row items-start gap-2.5 rounded-2xl px-3.5 py-3"
+              style={{ backgroundColor: isDark ? "#3A2A10" : "#FFF4E6" }}
             >
+              <MaterialCommunityIcons
+                name="account-alert-outline"
+                size={18}
+                color={ORANGE}
+              />
               <Text
-                className="text-lg font-bold"
-                style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                className="flex-1 text-xs leading-4"
+                style={{ color: isDark ? "#FFD9B8" : "#8A4B12" }}
               >
-                {advisor ? initials(advisor.fullName) : "AD"}
+                You don&apos;t have an assigned advisor yet. Please contact the
+                admin.
               </Text>
             </View>
-            <View className="flex-1">
-              <Text
-                className="text-[15px] font-bold text-ink dark:text-ink-dark"
-                numberOfLines={1}
-              >
-                {advisor?.fullName ?? "Your advisor"}
-              </Text>
-              <Text
-                className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark"
-                numberOfLines={1}
-              >
-                {advisor?.email ?? "Contact the Academic Office to get an advisor"}
-              </Text>
-              {advisor?.specialization ? (
-                <View className="mt-1.5 flex-row items-center gap-1">
-                  <MaterialCommunityIcons
-                    name="briefcase-outline"
-                    size={13}
-                    color={ORANGE}
-                  />
-                  <Text className="text-[11px] font-semibold text-ink-muted dark:text-ink-muted-dark">
-                    {advisor.specialization}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
+          ) : null}
         </View>
 
         {/* ── Success banner ── */}
@@ -550,14 +657,48 @@ export default function AppointmentsScreen() {
               Free slots
             </Text>
             <Text className="text-xs font-semibold" style={{ color: ORANGE_DEEP }}>
-              {slotsLoading ? "Loading…" : `${slots.length} slots open`}
+              {advisorLoading || slotsLoading
+                ? "Loading…"
+                : advisorError
+                  ? "Unavailable"
+                  : hasNoAdvisor
+                    ? "Unavailable"
+                    : `${slots.length} slots open`}
             </Text>
           </View>
           <Text className="mt-1 text-xs text-ink-muted dark:text-ink-muted-dark">
             Every session lasts 30 minutes · tap a time to pick it
           </Text>
 
-          {slotsLoading ? (
+          {advisorLoading ? (
+            <View className="mt-3 items-center rounded-3xl border border-line bg-surface py-10 dark:border-line-dark dark:bg-surface-dark">
+              <ActivityIndicator color={ORANGE} />
+              <Text className="mt-2 text-xs text-ink-muted dark:text-ink-muted-dark">
+                Checking your advisor&rsquo;s availability…
+              </Text>
+            </View>
+          ) : advisorError ? (
+            // The advisor could not be loaded, so the availability cannot be
+            // fetched either. Offer a retry instead of an empty slot list.
+            <View className="mt-3 items-center rounded-3xl border border-line bg-surface py-10 dark:border-line-dark dark:bg-surface-dark">
+              <MaterialCommunityIcons
+                name="cloud-off-outline"
+                size={32}
+                color="#94A3B8"
+              />
+              <Text className="mt-2 text-xs text-ink-muted dark:text-ink-muted-dark">
+                Could not load the availability for this day.
+              </Text>
+              <Pressable
+                onPress={() => refetchAdvisor()}
+                hitSlop={8}
+                className="mt-3 rounded-full px-4 py-2 active:opacity-80"
+                style={{ backgroundColor: ORANGE }}
+              >
+                <Text className="text-xs font-bold text-white">Try again</Text>
+              </Pressable>
+            </View>
+          ) : slotsLoading ? (
             <View className="mt-3 items-center rounded-3xl border border-line bg-surface py-10 dark:border-line-dark dark:bg-surface-dark">
               <ActivityIndicator color={ORANGE} />
               <Text className="mt-2 text-xs text-ink-muted dark:text-ink-muted-dark">
@@ -573,6 +714,35 @@ export default function AppointmentsScreen() {
               />
               <Text className="mt-2 text-xs text-ink-muted dark:text-ink-muted-dark">
                 Could not load the availability for this day.
+              </Text>
+              <Pressable
+                onPress={() => refetchSlots()}
+                hitSlop={8}
+                className="mt-3 rounded-full px-4 py-2 active:opacity-80"
+                style={{ backgroundColor: ORANGE }}
+              >
+                <Text className="text-xs font-bold text-white">Try again</Text>
+              </Pressable>
+            </View>
+          ) : hasNoAdvisor ? (
+            // Booking needs an advisor, so there is nothing to show yet.
+            <View className="mt-3 items-center rounded-3xl border border-line bg-surface px-6 py-8 dark:border-line-dark dark:bg-surface-dark">
+              <View
+                className="h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+              >
+                <MaterialCommunityIcons
+                  name="account-alert-outline"
+                  size={24}
+                  color={isDark ? "#FFA371" : ORANGE_DEEP}
+                />
+              </View>
+              <Text className="mt-3 text-sm font-bold text-ink dark:text-ink-dark">
+                No advisor assigned yet
+              </Text>
+              <Text className="mt-1 text-center text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
+                You don&apos;t have an assigned advisor yet. Please contact the
+                admin.
               </Text>
             </View>
           ) : slots.length === 0 ? (
@@ -1015,6 +1185,33 @@ export default function AppointmentsScreen() {
           </View>
         )}
       </Sheet>
+
+      {/* ── Toast ── */}
+      {toast ? (
+        <View
+          pointerEvents="none"
+          className="absolute inset-x-0 bottom-6 items-center px-6"
+        >
+          <View
+            className="w-full max-w-md flex-row items-center gap-2.5 rounded-2xl px-4 py-3"
+            style={{
+              backgroundColor: isDark ? "#2A2320" : "#241C17",
+              shadowColor: "#000",
+              shadowOpacity: 0.25,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 6,
+            }}
+          >
+            <MaterialCommunityIcons
+              name="alert-circle-outline"
+              size={18}
+              color="#FFA371"
+            />
+            <Text className="flex-1 text-xs leading-4 text-white">{toast}</Text>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

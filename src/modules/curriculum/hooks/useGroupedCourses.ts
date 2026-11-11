@@ -60,7 +60,12 @@ export function useCompletedCourseIds() {
  * semesters before it are done and the ones after it are still to come.
  */
 export function useGroupedCourses(currentSemester?: number | null) {
-  const { data: courses = [], isLoading, isError } = useCurriculumCourses();
+  const {
+    data: courses = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useCurriculumCourses();
   const completed = useCompletedCourseIds();
 
   return useMemo(() => {
@@ -88,8 +93,8 @@ export function useGroupedCourses(currentSemester?: number | null) {
         return { semester: sem, totalCredits, earnedCredits, status, courses: list };
       });
 
-    return { groups, isLoading, isError };
-  }, [courses, completed, currentSemester, isLoading, isError]);
+    return { groups, isLoading, isError, refetch };
+  }, [courses, completed, currentSemester, isLoading, isError, refetch]);
 }
 
 /** Build a lookup of { course code → display name } for resolving prerequisites. */

@@ -25,13 +25,24 @@ export function useMyAppointments() {
   });
 }
 
-export function useAvailability(date: string | null, advisorId?: string) {
+/**
+ * The free slots of one day.
+ *
+ * The query is disabled while there is no advisor to book with: the
+ * availability endpoint needs one, and asking without it would only
+ * produce a confusing error.
+ */
+export function useAvailability(
+  date: string | null,
+  advisorId?: string,
+  enabled = true,
+) {
   return useQuery({
     queryKey: date
       ? appointmentKeys.slots(date, advisorId)
       : ["appointments", "slots", "none"],
     queryFn: () => getAvailability(date!, advisorId),
-    enabled: !!date,
+    enabled: enabled && !!date && !!advisorId,
     staleTime: 30_000,
   });
 }
