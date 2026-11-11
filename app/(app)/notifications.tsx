@@ -7,7 +7,7 @@
  * single primary action ("Mark all read").
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,6 +27,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/lib/queries/notifications";
+import { resolveServerRoute } from "@/lib/navigation";
 import type { AppNotification } from "@/types";
 
 const ORANGE = "#F36F21";
@@ -64,12 +65,31 @@ function timeAgo(iso: string): string {
 
 type Filter = "all" | "unread";
 
+/**
+ * True when a notification carries a link the app can actually open — and
+ * that link leads somewhere other than this screen. Used to decide whether
+ * the row shows the "go deeper" chevron.
+ */
+function navigableHref(url: string | null): boolean {
+  const resolution = resolveServerRoute(url);
+  if (!resolution.ok) return false;
+  return !resolution.href.startsWith("/(app)/notifications");
+}
+
 export default function NotificationsScreen() {
   const { data, isLoading, isError, isRefetching, refetch } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const [filter, setFilter] = useState<Filter>("all");
+  const [toast, setToast] = useState<string | null>(null);
   const isDark = useColorScheme() === "dark";
+
+  // The toast clears itself — the user should never have to dismiss it.
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // The warm-paper palette needs a darker echo of itself for dark mode.
   const tint = isDark ? "#2E1C0E" : "#FFF1E7";
@@ -92,14 +112,38 @@ export default function NotificationsScreen() {
    * A tap does two things: it clears the unread state and it follows the
    * deep link the notification carries, when that link points at a route
    * this app actually has.
+   *
+   * `actionUrl` is backend data we do not control, so it is resolved
+   * through `resolveServerRoute()` before anything is pushed. An unknown
+   * or external URL never reaches the router — it produces a toast
+   * instead, so a bad link can never crash the screen.
    */
   const onPress = (n: AppNotification) => {
     if (!n.isRead) markRead.mutate(n.id);
-    const href = n.actionUrl;
-    if (!href) return;
+
+    const resolution = resolveServerRoute(n.actionUrl);
+    if (!resolution.ok) {
+      if (resolution.reason === "unsupported") {
+        console.warn(
+          `[FAAPS] Ignoring an unsupported notification link: ${resolution.url}`,
+        );
+        setToast("That notification link is not available in the app.");
+      }
+      return;
+    }
+
     // A link back to this screen would be a no-op — leave the user in place.
-    if (href.startsWith("/(app)/notifications")) return;
-    router.push(href as never);
+    if (resolution.href.startsWith("/(app)/notifications")) return;
+
+    try {
+      router.push(resolution.href);
+    } catch (error) {
+      console.warn(
+        `[FAAPS] Could not open the notification link "${resolution.href}"`,
+        error,
+      );
+      setToast("Could not open that link.");
+    }
   };
 
   return (
@@ -249,8 +293,7 @@ export default function NotificationsScreen() {
                   {timeAgo(item.createdAt)}
                 </Text>
               </View>
-              {item.actionUrl &&
-              !item.actionUrl.startsWith("/(app)/notifications") ? (
+              {item.actionUrl && navigableHref(item.actionUrl) ? (
                 <MaterialCommunityIcons
                   name="chevron-right"
                   size={20}
@@ -262,6 +305,21 @@ export default function NotificationsScreen() {
           )}
         />
       )}
+
+      {/* ── Toast — shown when a notification link cannot be opened ── */}
+      {toast ? (
+        <View
+          className="absolute left-5 right-5 bottom-6 items-center"
+          pointerEvents="none"
+        >
+          <View
+            className="rounded-full px-4 py-2.5"
+            style={{ backgroundColor: isDark ? "#1B1815" : "#191512" }}
+          >
+            <Text className="text-xs font-semibold text-white">{toast}</Text>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

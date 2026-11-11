@@ -36,6 +36,11 @@ yarn-error.*
 # local env files
 .env*.local
 
+# The machine-specific API base URL (contains a LAN IP). Keep it local —
+# commit `.env.example` instead so teammates have the template.
+.env
+!.env.example
+
 # typescript
 *.tsbuildinfo
 

@@ -12,7 +12,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.faaps.mobile"
+      "bundleIdentifier": "com.faaps.mobile",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "FAAPS connects to your university's academic server on the local network to load your profile, transcript and study plan.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "package": "com.faaps.mobile",
@@ -26,7 +33,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
