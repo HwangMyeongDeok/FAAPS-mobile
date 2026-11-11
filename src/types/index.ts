@@ -1,131 +1,293 @@
 // ============================================================
-// FAAPS-mobile domain types
-// Mirror of the DBML schema. Field names use snake_case to match
-// the backend API contract (which we will mock in this app).
+// FAAPS-mobile domain types.
+//
+// These mirror the FAAPS backend contracts one-to-one: every field name
+// comes straight from a backend record (Spring `record` components are
+// serialised as camelCase by Jackson).
 // ============================================================
 
 export type RoleCode = "ADMIN" | "ADVISOR" | "STUDENT";
 
 export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "LOCKED";
-export type AuthProvider = "LOCAL" | "GOOGLE";
 
-export interface User {
-  id: string;
-  role_id: string;
-  email: string;
-  auth_provider: AuthProvider;
-  full_name: string;
-  phone?: string | null;
-  avatar_url?: string | null;
-  status: UserStatus;
-  email_verified_at?: string | null;
-  last_login_at?: string | null;
-  created_at: string;
-}
+export type AcademicStatus =
+  | "ACTIVE"
+  | "PROBATION"
+  | "SUSPENDED"
+  | "GRADUATED"
+  | "WITHDRAWN"
+  | "LEAVE_OF_ABSENCE";
 
-export interface Student {
-  user_id: string;
-  student_code: string;
-  major_id: string;
-  curriculum_version_id: string;
-  enrollment_semester_id: string;
-  expected_graduation_semester_id?: string | null;
-  current_semester: number;
-  current_gpa: number; // 0.00 - 10.00
-  total_credits_earned: number;
-  academic_status:
-    | "ACTIVE"
-    | "PROBATION"
-    | "SUSPENDED"
-    | "GRADUATED"
-    | "WITHDRAWN"
-    | "LEAVE_OF_ABSENCE";
-}
+// ------------------------------------------------------------
+// Auth
+// ------------------------------------------------------------
 
-export interface Advisor {
-  user_id: string;
-  advisor_code: string;
-  specialization?: string | null;
-  max_advisees: number;
-  status: "ACTIVE" | "INACTIVE" | "ON_LEAVE";
-}
-
-export interface StudentAdvisorAssignment {
-  id: string;
-  student_id: string;
-  advisor_id: string;
-  group_name?: string | null;
-  assigned_date: string; // ISO date
-  end_date?: string | null;
-  is_primary: boolean;
-  status: "ACTIVE" | "COMPLETED" | "TRANSFERRED";
-}
-
-export interface Major {
-  id: string;
-  code: string;
-  name: string;
-  total_credits: number;
-  duration_years: number;
-  status: "ACTIVE" | "INACTIVE";
-}
-
-export interface CurriculumVersion {
-  id: string;
-  major_id: string;
-  version: string; // K18, K19 ...
-  name: string;
-  effective_from_semester_id: string;
-  effective_to_semester_id?: string | null;
-  is_current: boolean;
-  status: "ACTIVE" | "INACTIVE";
-}
-
-export interface Specialization {
-  id: string;
-  major_id: string;
-  curriculum_version_id: string;
-  code: string;
-  name: string;
-  description?: string | null;
-}
-
-// ============================================================
-// API helper types
-// ============================================================
-
-export interface ProfileResponse {
-  user: User;
-  student: Student;
-  major: Major;
-  curriculum_version: CurriculumVersion;
-  specialization: Specialization | null;
-  available_specializations: Specialization[];
-  advisor: {
-    user: Pick<User, "id" | "full_name" | "email" | "phone" | "avatar_url">;
-    advisor: Advisor;
-    assignment: StudentAdvisorAssignment;
-  } | null;
-}
-
+/** `AuthSession` — returned by login / refresh / me. */
 export interface AuthSession {
-  token: string;
-  user: User;
-  student_code: string;
+  id: string;
+  fullName: string;
+  email: string;
+  role: RoleCode | string;
+  status: UserStatus | string;
 }
 
-// ── Notifications ────────────────────────────────────────────────────────────
+export interface AuthCredentials {
+  email: string;
+  password: string;
+}
 
-export type NotificationKind = "PLAN" | "ADVISOR" | "SYSTEM" | "GRADE";
+// ------------------------------------------------------------
+// Student profile
+// ------------------------------------------------------------
 
+/** `StudentAcademicService.Profile` */
+export interface StudentProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  accountStatus: string;
+  studentCode: string | null;
+  majorId: string | null;
+  majorCode: string | null;
+  majorName: string | null;
+  curriculumVersionId: string | null;
+  cohort: string | null;
+  currentSemester: number | null;
+  currentGpa: number | null;
+  totalCreditsEarned: number | null;
+  academicStatus: AcademicStatus | string | null;
+  dateOfBirth: string | null;
+}
+
+export interface UpdateProfileInput {
+  fullName: string;
+  phone?: string;
+}
+
+/** `StudentAdvisorService.Advisor` */
+export interface StudentAdvisor {
+  id: string;
+  advisorCode: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  specialization: string | null;
+  maxAdvisees: number;
+  status: string;
+  assignmentStartDate: string | null;
+  assignedDate: string | null;
+  groupName: string | null;
+  isPrimary: boolean;
+}
+
+// ------------------------------------------------------------
+// Academic progress
+// ------------------------------------------------------------
+
+/** `StudentAcademicService.SemesterSummary` */
+export interface SemesterSummary {
+  code: string;
+  name: string;
+  creditsEnrolled: number;
+  creditsEarned: number;
+  semesterGpa: number | null;
+  cumulativeGpa: number | null;
+  standing: string | null;
+}
+
+/** `StudentAcademicService.Progress` */
+export interface AcademicProgress {
+  requiredCredits: number;
+  earnedCredits: number;
+  curriculumCourses: number;
+  currentGpa: number | null;
+  completedCourses: number;
+  semesters: SemesterSummary[];
+}
+
+/** `StudentAcademicService.TranscriptRow` */
+export interface TranscriptRow {
+  id: string;
+  courseCode: string;
+  courseName: string;
+  credits: number;
+  semesterCode: string;
+  semesterName: string;
+  finalScore: number | null;
+  status: string;
+  attemptNumber: number;
+  creditsEarned: number;
+}
+
+/** `StudentAcademicService.Curriculum` */
+export interface Curriculum {
+  id: string;
+  version: string;
+  name: string;
+  description: string | null;
+  majorCode: string;
+  majorName: string;
+}
+
+/** `StudentAcademicService.CurriculumCourse` */
+export interface CurriculumCourse {
+  courseId: string;
+  code: string;
+  name: string;
+  credits: number;
+  semesterNumber: number;
+  mandatory: boolean;
+  groupName: string | null;
+}
+
+// ------------------------------------------------------------
+// Study plans
+// ------------------------------------------------------------
+
+/** `StudentPlanDtos.Semester` */
+export interface PlanSemester {
+  id: string;
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+/** `StudentPlanDtos.PlanHeader` */
+export interface PlanHeader {
+  id: string;
+  semesterId: string;
+  semesterCode: string;
+  version: number;
+  status: string;
+  planType: string;
+  totalCredits: number;
+  previousPlanId: string | null;
+  submittedAt: string | null;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+  createdAt: string;
+}
+
+/** `StudentPlanDtos.PlanCourse` */
+export interface PlanCourse {
+  id: string;
+  code: string;
+  name: string;
+  credits: number;
+  priority: string | null;
+  notes: string | null;
+}
+
+/** `StudentPlanDtos.CurriculumPlan` */
+export interface CurriculumPlan {
+  header: PlanHeader;
+  courses: PlanCourse[];
+  issues: string[];
+}
+
+// ------------------------------------------------------------
+// Advising
+// ------------------------------------------------------------
+
+/** `AdvisingConversationService.Request` */
+export interface AdvisingRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  advisorId: string;
+  advisorName: string;
+  title: string;
+  description: string;
+  requestType: string;
+  status: string;
+  resolutionSummary: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `AdvisingConversationService.Message` */
+export interface AdvisingMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  internal: boolean;
+  createdAt: string;
+}
+
+/** `AdvisingConversationService.Detail` */
+export interface AdvisingDetail {
+  request: AdvisingRequest;
+  messages: AdvisingMessage[];
+}
+
+// ------------------------------------------------------------
+// Appointments
+// ------------------------------------------------------------
+
+/** `AppointmentDtos.AvailableSlotDto` — ISO local date-times. */
+export interface AvailableSlot {
+  startTime: string;
+  endTime: string;
+}
+
+/** `AppointmentDtos.BookedAppointmentDto` */
+export interface BookedAppointment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentCode: string;
+  advisorId: string;
+  advisorName: string;
+  startTime: string;
+  endTime: string;
+  reason: string;
+  status: string;
+  decisionNote: string | null;
+  createdAt: string;
+}
+
+export interface BookAppointmentInput {
+  advisorId?: string;
+  startTime: string;
+  reason: string;
+}
+
+// ------------------------------------------------------------
+// Notifications
+// ------------------------------------------------------------
+
+export type NotificationType =
+  | "INFO"
+  | "WARNING"
+  | "REMINDER"
+  | "PLAN_STATUS"
+  | "MESSAGE"
+  | "ADVISOR_REQUEST";
+
+/** `NotificationService.Item` */
 export interface AppNotification {
   id: string;
-  user_id: string;
-  kind: NotificationKind;
+  recipientUserId: string;
+  notificationType: NotificationType | string;
   title: string;
-  body: string;
-  created_at: string;
-  read_at: string | null;
-  /** Deep link target, e.g. `/(app)/plan` */
-  href?: string;
+  message: string;
+  actionUrl: string | null;
+  relatedStudentId: string | null;
+  resolvedAt: string | null;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** `NotificationService.Page` */
+export interface NotificationPage {
+  items: AppNotification[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }

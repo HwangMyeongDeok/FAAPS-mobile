@@ -1,88 +1,104 @@
 /**
- * React Query hooks for the AI Assistant.
- *
- * The roadmap goes through the query cache — regenerating replaces the
- * cached plan. The chat thread is different: the screen owns the live list
- * (it has to append the student's own message the instant they hit send,
- * before any answer exists), so these hooks only expose the mutations.
+ * React Query hooks for the AI assistant (chat thread + roadmap).
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  createAiConversation,
+  getAiConversations,
+  getAiMessages,
   getAiRoadmap,
-  getAiThread,
-  getPromptSuggestions,
   rateAiMessage,
   regenerateAiRoadmap,
   sendAiMessage,
 } from "@/lib/api/ai";
-import type { AiRoadmapRequest } from "@/types/ai";
 
 export const aiKeys = {
   all: ["ai"] as const,
-  thread: (studentId: string) => ["ai", "thread", studentId] as const,
-  prompts: () => ["ai", "prompts"] as const,
-  roadmap: (studentId: string) => ["ai", "roadmap", studentId] as const,
-  /**
-   * The request the cached roadmap was built from. The screen needs it so
-   * "Tạo lại lộ trình" knows which plan it is currently showing, even after
-   * the student leaves the screen and comes back.
-   */
-  roadmapRequest: (studentId: string) => ["ai", "roadmap", "request", studentId] as const,
+  conversations: () => ["ai", "conversations"] as const,
+  messages: (conversationId: string) =>
+    ["ai", "conversations", conversationId, "messages"] as const,
+  roadmap: () => ["ai", "roadmap"] as const,
 };
 
-export function useAiThread(studentId: string | null) {
+export function useAiConversations() {
   return useQuery({
-    queryKey: studentId ? aiKeys.thread(studentId) : ["ai", "thread", "none"],
-    queryFn: () => getAiThread(studentId!),
-    enabled: !!studentId,
+    queryKey: aiKeys.conversations(),
+    queryFn: getAiConversations,
     staleTime: 60_000,
   });
 }
 
-export function useAiPrompts() {
+export function useAiMessages(conversationId: string | null) {
   return useQuery({
-    queryKey: aiKeys.prompts(),
-    queryFn: getPromptSuggestions,
-    staleTime: 30 * 60_000,
+    queryKey: conversationId
+      ? aiKeys.messages(conversationId)
+      : ["ai", "messages", "none"],
+    queryFn: () => getAiMessages(conversationId!),
+    enabled: !!conversationId,
+    staleTime: 30_000,
   });
 }
 
-/**
- * Send a question. The screen appends the student's message itself, then
- * appends the answer when this resolves.
- */
-export function useSendAiMessage(studentId: string | null) {
+export function useCreateAiConversation() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (question: string) => sendAiMessage(studentId!, question),
+    mutationFn: (title?: string) => createAiConversation(title),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: aiKeys.conversations() });
+    },
   });
 }
 
-/** Record the verdict on one answer. */
-export function useRateAiMessage(studentId: string | null) {
+export function useSendAiMessage() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ messageId, rating }: { messageId: string; rating: "up" | "down" }) =>
-      rateAiMessage(studentId!, messageId, rating),
+    mutationFn: ({
+      conversationId,
+      content,
+    }: {
+      conversationId: string;
+      content: string;
+    }) => sendAiMessage(conversationId, content),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: aiKeys.messages(variables.conversationId) });
+      qc.invalidateQueries({ queryKey: aiKeys.conversations() });
+    },
   });
 }
 
-export function useAiRoadmap(studentId: string | null) {
+export function useRateAiMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      wasHelpful,
+      feedback,
+    }: {
+      messageId: string;
+      wasHelpful: boolean;
+      feedback?: string;
+    }) => rateAiMessage(messageId, wasHelpful, feedback),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: aiKeys.all });
+    },
+  });
+}
+
+export function useAiRoadmap() {
   return useQuery({
-    queryKey: studentId ? aiKeys.roadmap(studentId) : ["ai", "roadmap", "none"],
-    queryFn: () => getAiRoadmap(studentId!),
-    enabled: !!studentId,
+    queryKey: aiKeys.roadmap(),
+    queryFn: getAiRoadmap,
     staleTime: 5 * 60_000,
   });
 }
 
-export function useRegenerateAiRoadmap(studentId: string | null) {
+export function useRegenerateAiRoadmap() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (request: AiRoadmapRequest) => regenerateAiRoadmap(studentId!, request),
-    onSuccess: (data, request) => {
-      if (!studentId) return;
-      qc.setQueryData(aiKeys.roadmap(studentId), data);
-      qc.setQueryData(aiKeys.roadmapRequest(studentId), request);
+    mutationFn: regenerateAiRoadmap,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: aiKeys.roadmap() });
     },
   });
 }

@@ -1,10 +1,16 @@
 /**
- * FE-S — Appointment Booking: đặt lịch hẹn 1-1 với cố vấn.
+ * FE-S — Appointment booking: schedule a 1-on-1 session with your advisor.
  *
- * Một màn hình trả lời: "Khi nào tôi gặp được advisor?"
- * Đặt lịch ở trên (lịch tháng + khung 30 phút + sheet lý do),
- * lịch sắp tới ở dưới với hủy kèm lý do — cùng một cuộn dọc,
- * mọi thao tác trong tầm ngón cái.
+ * One screen answers one question: "When can I meet my advisor?"
+ * Booking lives at the top (month calendar + 30-minute slots + reason sheet),
+ * upcoming sessions below with a cancel action — one vertical scroll, every
+ * action within thumb reach.
+ *
+ * Data comes from:
+ *   • `GET  /api/appointments/available-slots?date=&advisorId=`
+ *   • `GET  /api/student/appointments`
+ *   • `POST /api/student/appointments`
+ *   • `PUT  /api/appointments/{id}/cancel`
  */
 
 import { useMemo, useState } from "react";
@@ -23,38 +29,47 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ScreenHeader, goBack } from "@/components/ScreenHeader";
 import { Sheet } from "@/components/ui/sheet";
-import { useMyProfile } from "@/lib/queries/profile";
+import { useMyAdvisor } from "@/lib/queries/profile";
 import {
   useAvailability,
   useBookAppointment,
   useCancelAppointment,
   useMyAppointments,
 } from "@/lib/queries/appointments";
-import type { Appointment, TimeSlot } from "@/lib/api/appointments";
-import { useAuthStore } from "@/stores/auth";
+import type { AvailableSlot, BookedAppointment } from "@/types";
 
 const ORANGE = "#F36F21";
 const ORANGE_DEEP = "#B5460D";
 
-const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-const MONTHS_VI = [
-  "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
-  "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
+const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const QUICK_REASONS = [
-  "Tư vấn kế hoạch học tập",
-  "Chọn chuyên ngành hẹp",
-  "Đăng ký môn kỳ tới",
-  "Cải thiện GPA / học lại",
-  "Thực tập & định hướng nghề",
+  "Study plan advice",
+  "Choosing a specialization",
+  "Registering for next semester",
+  "Improving my GPA / retaking a course",
+  "Internship & career direction",
 ];
 
 const CANCEL_REASONS = [
-  "Bận lịch học đột xuất",
-  "Đã trao đổi qua tin nhắn",
-  "Muốn đổi sang khung giờ khác",
-  "Lý do cá nhân",
+  "Unexpected class conflict",
+  "Already discussed over messages",
+  "I want a different time slot",
+  "Personal reason",
 ];
 
 // ── Date helpers (pure, no dep) ──────────────────────────────────────────────
@@ -71,30 +86,50 @@ function parseISO(s: string): Date {
   return new Date(y, m - 1, d);
 }
 
-function viLong(dateStr: string): string {
+function longDate(dateStr: string): string {
   const d = parseISO(dateStr);
-  const names = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-  return `${names[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
-function viShort(dateStr: string): { day: string; mon: string; dow: string } {
+function shortDate(dateStr: string): { day: string; mon: string; dow: string } {
   const d = parseISO(dateStr);
-  const dows = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  const dows = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
   return {
     day: `${d.getDate()}`.padStart(2, "0"),
-    mon: `T${d.getMonth() + 1}`,
+    mon: MONTHS[d.getMonth()].slice(0, 3),
     dow: dows[d.getDay()],
   };
 }
 
-function initials(name: string): string {
-  return name.split(" ").filter(Boolean).slice(-2).map((w) => w[0]?.toUpperCase()).join("");
+/** Extract the time part of an ISO local date-time ("2026-11-12T09:00:00"). */
+function timeOf(iso: string): string {
+  const match = /T(\d{2}:\d{2})/.exec(iso);
+  return match ? match[1] : iso;
 }
 
-/** 42 ô lịch cho tháng chứa `cursor` — hàng bắt đầu từ Thứ Hai. */
+/** Extract the date part of an ISO local date-time. */
+function dateOf(iso: string): string {
+  return iso.split("T")[0];
+}
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(-2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+}
+
+/** 42 calendar cells for the month containing `cursor` — the week starts on Monday. */
 function monthCells(cursor: Date): Date[] {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-  // JS: CN=0..T7=6 → đổi về T2=0..CN=6
+  // JS: Sun=0..Sat=6 → shift so Mon=0..Sun=6
   const lead = (first.getDay() + 6) % 7;
   const start = new Date(first);
   start.setDate(first.getDate() - lead);
@@ -109,8 +144,7 @@ function monthCells(cursor: Date): Date[] {
 
 export default function AppointmentsScreen() {
   const isDark = useColorScheme() === "dark";
-  const userId = useAuthStore((s) => s.session?.user.id ?? null);
-  const { data: profile } = useMyProfile(userId);
+  const { data: advisor } = useMyAdvisor();
 
   const todayISO = useMemo(() => toISODate(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(todayISO);
@@ -118,24 +152,24 @@ export default function AppointmentsScreen() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [justBookedId, setJustBooked] = useState<string | null>(null);
 
-  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<BookedAppointment | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelCustom, setCancelCustom] = useState("");
 
-  const advisorUser = profile?.advisor?.user ?? null;
-  const advisorId = profile?.advisor?.user.id ?? "u-advisor-1";
+  const advisorId = advisor?.id;
 
   const {
     data: slots = [],
     isLoading: slotsLoading,
+    isError: slotsError,
     refetch: refetchSlots,
     isRefetching: slotsRefetching,
-  } = useAvailability(selectedDate);
+  } = useAvailability(selectedDate, advisorId);
   const {
     data: appointments = [],
     isLoading: apptsLoading,
@@ -147,18 +181,26 @@ export default function AppointmentsScreen() {
   const cancel = useCancelAppointment();
 
   const upcoming = useMemo(
-    () => appointments.filter((a) => a.status === "upcoming"),
+    () => appointments.filter((a) => a.status === "PENDING" || a.status === "ACCEPTED" || a.status === "SCHEDULED"),
     [appointments],
   );
   const history = useMemo(
-    () => appointments.filter((a) => a.status !== "upcoming"),
+    () => appointments.filter((a) => a.status !== "PENDING" && a.status !== "ACCEPTED" && a.status !== "SCHEDULED"),
     [appointments],
   );
-  const upcomingDates = useMemo(() => new Set(upcoming.map((a) => a.date)), [upcoming]);
+  const upcomingDates = useMemo(
+    () => new Set(upcoming.map((a) => dateOf(a.startTime))),
+    [upcoming],
+  );
 
-  const morning = useMemo(() => slots.filter((s) => s.start < "12:00"), [slots]);
-  const afternoon = useMemo(() => slots.filter((s) => s.start >= "12:00"), [slots]);
-  const freeCount = useMemo(() => slots.filter((s) => s.available).length, [slots]);
+  const morning = useMemo(
+    () => slots.filter((s) => timeOf(s.startTime) < "12:00"),
+    [slots],
+  );
+  const afternoon = useMemo(
+    () => slots.filter((s) => timeOf(s.startTime) >= "12:00"),
+    [slots],
+  );
 
   const refreshing = slotsRefetching || apptsRefetching;
   const onRefresh = () => {
@@ -176,20 +218,19 @@ export default function AppointmentsScreen() {
     setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1));
 
   const confirmBooking = () => {
-    if (!selectedSlot || !userId) return;
+    if (!selectedSlot) return;
     const r = reason.trim();
     if (r.length < 10) {
-      setReasonError("Viết rõ lý do buổi hẹn (ít nhất 10 ký tự) để advisor chuẩn bị tốt hơn.");
+      setReasonError(
+        "Describe the reason for the session (at least 10 characters) so your advisor can prepare.",
+      );
       return;
     }
     setReasonError(null);
     book.mutate(
       {
-        student_id: userId,
-        advisor_id: advisorId,
-        date: selectedSlot.date,
-        start_time: selectedSlot.start,
-        end_time: selectedSlot.end,
+        advisorId,
+        startTime: selectedSlot.startTime,
         reason: r,
       },
       {
@@ -221,11 +262,11 @@ export default function AppointmentsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
-        title="Đặt lịch hẹn"
+        title="Book a session"
         subtitle={
-          advisorUser
-            ? `Với ${advisorUser.full_name} · ${profile?.advisor?.assignment.group_name ?? ""}`
-            : "Gặp trực tiếp advisor của bạn"
+          advisor
+            ? `With ${advisor.fullName}${advisor.groupName ? ` · ${advisor.groupName}` : ""}`
+            : "Meet your advisor in person"
         }
         onBack={goBack}
         right={
@@ -234,8 +275,11 @@ export default function AppointmentsScreen() {
               className="rounded-full px-3 py-1.5"
               style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
             >
-              <Text className="text-xs font-bold" style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}>
-                {upcoming.length} sắp tới
+              <Text
+                className="text-xs font-bold"
+                style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+              >
+                {upcoming.length} upcoming
               </Text>
             </View>
           ) : undefined
@@ -247,7 +291,11 @@ export default function AppointmentsScreen() {
         contentContainerStyle={{ paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ORANGE} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={ORANGE}
+          />
         }
       >
         {/* ── Advisor strip ── */}
@@ -255,31 +303,50 @@ export default function AppointmentsScreen() {
           <View className="flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
             <View
               className="items-center justify-center rounded-full"
-              style={{ width: 52, height: 52, backgroundColor: isDark ? "#2E1C0E" : "#FFE5D4" }}
+              style={{
+                width: 52,
+                height: 52,
+                backgroundColor: isDark ? "#2E1C0E" : "#FFE5D4",
+              }}
             >
-              <Text className="text-lg font-bold" style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}>
-                {advisorUser ? initials(advisorUser.full_name) : "AD"}
+              <Text
+                className="text-lg font-bold"
+                style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+              >
+                {advisor ? initials(advisor.fullName) : "AD"}
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-[15px] font-bold text-ink dark:text-ink-dark" numberOfLines={1}>
-                {advisorUser?.full_name ?? "Advisor của bạn"}
+              <Text
+                className="text-[15px] font-bold text-ink dark:text-ink-dark"
+                numberOfLines={1}
+              >
+                {advisor?.fullName ?? "Your advisor"}
               </Text>
-              <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark" numberOfLines={1}>
-                {advisorUser?.email ?? "Liên hệ Phòng Đào tạo để được phân công"}
+              <Text
+                className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark"
+                numberOfLines={1}
+              >
+                {advisor?.email ?? "Contact the Academic Office to get an advisor"}
               </Text>
-              <View className="mt-1.5 flex-row items-center gap-1">
-                <MaterialCommunityIcons name="map-marker-outline" size={13} color={ORANGE} />
-                <Text className="text-[11px] font-semibold text-ink-muted dark:text-ink-muted-dark">
-                  Phòng 305 · Tòa Beta / Online
-                </Text>
-              </View>
+              {advisor?.specialization ? (
+                <View className="mt-1.5 flex-row items-center gap-1">
+                  <MaterialCommunityIcons
+                    name="briefcase-outline"
+                    size={13}
+                    color={ORANGE}
+                  />
+                  <Text className="text-[11px] font-semibold text-ink-muted dark:text-ink-muted-dark">
+                    {advisor.specialization}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
 
         {/* ── Success banner ── */}
-        {justBookedId && (
+        {justBookedId ? (
           <View className="px-5 pt-4">
             <View
               className="flex-row items-center gap-3 rounded-3xl p-4"
@@ -292,17 +359,27 @@ export default function AppointmentsScreen() {
                 <MaterialCommunityIcons name="check" size={20} color="#fff" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-white">Đặt lịch thành công</Text>
-                <Text className="mt-0.5 text-xs leading-4" style={{ color: "rgba(255,255,255,0.85)" }}>
-                  Advisor sẽ xác nhận qua thông báo. Xem chi tiết ở danh sách bên dưới.
+                <Text className="text-sm font-bold text-white">
+                  Session booked
+                </Text>
+                <Text
+                  className="mt-0.5 text-xs leading-4"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
+                  Your advisor will confirm by notification. The details are in
+                  the list below.
                 </Text>
               </View>
               <Pressable onPress={() => setJustBooked(null)} hitSlop={10}>
-                <MaterialCommunityIcons name="close" size={18} color="rgba(255,255,255,0.8)" />
+                <MaterialCommunityIcons
+                  name="close"
+                  size={18}
+                  color="rgba(255,255,255,0.8)"
+                />
               </Pressable>
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* ── Calendar card ── */}
         <View className="px-5 pt-4">
@@ -312,7 +389,7 @@ export default function AppointmentsScreen() {
                 onPress={() => shiftMonth(-1)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="Tháng trước"
+                accessibilityLabel="Previous month"
                 className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
                 style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
               >
@@ -324,17 +401,17 @@ export default function AppointmentsScreen() {
               </Pressable>
               <View className="items-center">
                 <Text className="text-[16px] font-bold text-ink dark:text-ink-dark">
-                  {MONTHS_VI[monthCursor.getMonth()]} {monthCursor.getFullYear()}
+                  {MONTHS[monthCursor.getMonth()]} {monthCursor.getFullYear()}
                 </Text>
                 <Text className="mt-0.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
-                  {viLong(selectedDate)}
+                  {longDate(selectedDate)}
                 </Text>
               </View>
               <Pressable
                 onPress={() => shiftMonth(1)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="Tháng sau"
+                accessibilityLabel="Next month"
                 className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
                 style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
               >
@@ -357,7 +434,7 @@ export default function AppointmentsScreen() {
               ))}
             </View>
 
-            {/* day grid — 44px touch targets */}
+            {/* day grid — 40px touch targets */}
             <View className="flex-row flex-wrap">
               {monthCells(monthCursor).map((d) => {
                 const iso = toISODate(d);
@@ -369,7 +446,11 @@ export default function AppointmentsScreen() {
                 const disabled = isPast || isSunday;
                 const hasAppt = upcomingDates.has(iso);
                 return (
-                  <View key={iso} style={{ width: "14.28%" }} className="items-center py-0.5">
+                  <View
+                    key={iso}
+                    style={{ width: "14.28%" }}
+                    className="items-center py-0.5"
+                  >
                     <Pressable
                       onPress={() => !disabled && pickDate(iso)}
                       disabled={disabled}
@@ -379,11 +460,7 @@ export default function AppointmentsScreen() {
                       style={{
                         width: 40,
                         height: 40,
-                        backgroundColor: isSelected
-                          ? ORANGE
-                          : isToday
-                            ? "transparent"
-                            : "transparent",
+                        backgroundColor: isSelected ? ORANGE : "transparent",
                         borderWidth: isToday && !isSelected ? 1.5 : 0,
                         borderColor: ORANGE,
                         opacity: !inMonth ? 0.35 : disabled ? 0.4 : 1,
@@ -436,19 +513,31 @@ export default function AppointmentsScreen() {
             {/* legend */}
             <View className="mt-2 flex-row items-center gap-4 px-1">
               <View className="flex-row items-center gap-1.5">
-                <View className="h-2 w-2 rounded-full" style={{ backgroundColor: ORANGE }} />
-                <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">Đã chọn</Text>
+                <View
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: ORANGE }}
+                />
+                <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
+                  Selected
+                </Text>
               </View>
               <View className="flex-row items-center gap-1.5">
                 <View
                   className="h-2 w-2 rounded-full border"
                   style={{ borderColor: ORANGE }}
                 />
-                <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">Hôm nay</Text>
+                <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
+                  Today
+                </Text>
               </View>
               <View className="flex-row items-center gap-1.5">
-                <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ORANGE }} />
-                <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">Có lịch hẹn</Text>
+                <View
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: ORANGE }}
+                />
+                <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
+                  Has a session
+                </Text>
               </View>
             </View>
           </View>
@@ -458,21 +547,32 @@ export default function AppointmentsScreen() {
         <View className="px-5 pt-5">
           <View className="flex-row items-end justify-between">
             <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-              Khung giờ trống
+              Free slots
             </Text>
             <Text className="text-xs font-semibold" style={{ color: ORANGE_DEEP }}>
-              {slotsLoading ? "Đang tải…" : `${freeCount} khung còn trống`}
+              {slotsLoading ? "Loading…" : `${slots.length} slots open`}
             </Text>
           </View>
           <Text className="mt-1 text-xs text-ink-muted dark:text-ink-muted-dark">
-            Mỗi buổi 30 phút · Chạm để chọn giờ bạn muốn gặp
+            Every session lasts 30 minutes · tap a time to pick it
           </Text>
 
           {slotsLoading ? (
             <View className="mt-3 items-center rounded-3xl border border-line bg-surface py-10 dark:border-line-dark dark:bg-surface-dark">
               <ActivityIndicator color={ORANGE} />
               <Text className="mt-2 text-xs text-ink-muted dark:text-ink-muted-dark">
-                Đang xem lịch rảnh của advisor…
+                Checking your advisor&rsquo;s availability…
+              </Text>
+            </View>
+          ) : slotsError ? (
+            <View className="mt-3 items-center rounded-3xl border border-line bg-surface py-10 dark:border-line-dark dark:bg-surface-dark">
+              <MaterialCommunityIcons
+                name="alert-circle-outline"
+                size={32}
+                color="#EF4444"
+              />
+              <Text className="mt-2 text-xs text-ink-muted dark:text-ink-muted-dark">
+                Could not load the availability for this day.
               </Text>
             </View>
           ) : slots.length === 0 ? (
@@ -488,37 +588,30 @@ export default function AppointmentsScreen() {
                 />
               </View>
               <Text className="mt-3 text-sm font-bold text-ink dark:text-ink-dark">
-                Advisor nghỉ Chủ nhật
+                No free slots on this day
               </Text>
               <Text className="mt-1 text-center text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
-                Chọn một ngày khác trong tuần để xem khung giờ trống.
+                Pick another weekday to see the open slots.
               </Text>
             </View>
           ) : (
             <>
               <SlotGroup
-                title="Buổi sáng"
+                title="Morning"
                 icon="weather-sunny"
                 slots={morning}
-                selectedId={selectedSlot?.id ?? null}
+                selectedStart={selectedSlot?.startTime ?? null}
                 onPick={(s) => setSelectedSlot(s)}
                 isDark={isDark}
               />
               <SlotGroup
-                title="Buổi chiều"
+                title="Afternoon"
                 icon="weather-partly-cloudy"
                 slots={afternoon}
-                selectedId={selectedSlot?.id ?? null}
+                selectedStart={selectedSlot?.startTime ?? null}
                 onPick={(s) => setSelectedSlot(s)}
                 isDark={isDark}
               />
-              {freeCount === 0 && (
-                <View className="mt-3 rounded-2xl bg-brand-tint p-3.5 dark:bg-brand-tint-dark">
-                  <Text className="text-center text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
-                    Ngày này đã kín lịch. Thử ngày khác — chấm cam trên lịch là ngày bạn đã có hẹn.
-                  </Text>
-                </View>
-              )}
             </>
           )}
         </View>
@@ -527,11 +620,11 @@ export default function AppointmentsScreen() {
         <View className="px-5 pt-6">
           <View className="flex-row items-end justify-between">
             <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-              Lịch hẹn sắp tới
+              Upcoming sessions
             </Text>
             {upcoming.length > 0 && (
               <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">
-                {upcoming.length} buổi
+                {upcoming.length} booked
               </Text>
             )}
           </View>
@@ -546,13 +639,18 @@ export default function AppointmentsScreen() {
                 className="h-12 w-12 items-center justify-center rounded-full"
                 style={{ backgroundColor: ORANGE }}
               >
-                <MaterialCommunityIcons name="calendar-plus" size={22} color="#fff" />
+                <MaterialCommunityIcons
+                  name="calendar-plus"
+                  size={22}
+                  color="#fff"
+                />
               </View>
               <Text className="mt-3 text-sm font-bold text-ink dark:text-ink-dark">
-                Chưa có lịch hẹn nào
+                No sessions booked
               </Text>
               <Text className="mt-1 text-center text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
-                Chọn ngày và khung giờ ở trên để đặt buổi gặp đầu tiên với advisor.
+                Pick a date and a time slot above to book your first session
+                with your advisor.
               </Text>
             </View>
           ) : (
@@ -561,7 +659,7 @@ export default function AppointmentsScreen() {
                 <AppointmentCard
                   key={a.id}
                   appointment={a}
-                  advisorName={advisorUser?.full_name ?? "Advisor"}
+                  advisorName={advisor?.fullName ?? "Advisor"}
                   isDark={isDark}
                   highlight={a.id === justBookedId}
                   onCancel={() => setCancelTarget(a)}
@@ -573,28 +671,36 @@ export default function AppointmentsScreen() {
           {history.length > 0 && (
             <View className="mt-5">
               <Text className="text-[13px] font-bold text-ink-muted dark:text-ink-muted-dark">
-                Đã qua / đã hủy ({history.length})
+                Past / cancelled ({history.length})
               </Text>
               <View className="mt-2 gap-2 opacity-80">
-                {history.map((a) => (
-                  <View
-                    key={a.id}
-                    className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 dark:border-line-dark dark:bg-surface-dark"
-                  >
-                    <Text className="text-xs font-bold text-ink-faint dark:text-ink-faint-dark tabular-nums">
-                      {viShort(a.date).day}/{viShort(a.date).mon}
-                    </Text>
-                    <Text className="flex-1 text-xs text-ink-muted dark:text-ink-muted-dark" numberOfLines={1}>
-                      {a.start_time} · {a.reason}
-                    </Text>
-                    <Text
-                      className="text-[11px] font-bold"
-                      style={{ color: a.status === "cancelled" ? "#C2410C" : "#6A6058" }}
+                {history.map((a) => {
+                  const v = shortDate(dateOf(a.startTime));
+                  return (
+                    <View
+                      key={a.id}
+                      className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 dark:border-line-dark dark:bg-surface-dark"
                     >
-                      {a.status === "cancelled" ? "Đã hủy" : "Hoàn thành"}
-                    </Text>
-                  </View>
-                ))}
+                      <Text className="text-xs font-bold text-ink-faint dark:text-ink-faint-dark tabular-nums">
+                        {v.day}/{v.mon}
+                      </Text>
+                      <Text
+                        className="flex-1 text-xs text-ink-muted dark:text-ink-muted-dark"
+                        numberOfLines={1}
+                      >
+                        {timeOf(a.startTime)} · {a.reason}
+                      </Text>
+                      <Text
+                        className="text-[11px] font-bold"
+                        style={{
+                          color: a.status === "CANCELLED" ? "#C2410C" : "#6A6058",
+                        }}
+                      >
+                        {a.status === "CANCELLED" ? "Cancelled" : "Completed"}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -610,14 +716,19 @@ export default function AppointmentsScreen() {
                 className="h-12 w-12 items-center justify-center rounded-2xl"
                 style={{ backgroundColor: ORANGE }}
               >
-                <MaterialCommunityIcons name="calendar-clock" size={22} color="#fff" />
+                <MaterialCommunityIcons
+                  name="calendar-clock"
+                  size={22}
+                  color="#fff"
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-lg font-bold text-ink dark:text-ink-dark">
-                  Xác nhận đặt lịch
+                  Confirm the booking
                 </Text>
                 <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark">
-                  {viLong(selectedSlot.date)} · {selectedSlot.start}–{selectedSlot.end}
+                  {longDate(dateOf(selectedSlot.startTime))} ·{" "}
+                  {timeOf(selectedSlot.startTime)}–{timeOf(selectedSlot.endTime)}
                 </Text>
               </View>
             </View>
@@ -630,27 +741,36 @@ export default function AppointmentsScreen() {
                 className="h-10 w-10 items-center justify-center rounded-full"
                 style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFE5D4" }}
               >
-                <Text className="text-sm font-bold" style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}>
-                  {advisorUser ? initials(advisorUser.full_name) : "AD"}
+                <Text
+                  className="text-sm font-bold"
+                  style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                >
+                  {advisor ? initials(advisor.fullName) : "AD"}
                 </Text>
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-ink dark:text-ink-dark" numberOfLines={1}>
-                  {advisorUser?.full_name ?? "Advisor của bạn"}
+                <Text
+                  className="text-sm font-bold text-ink dark:text-ink-dark"
+                  numberOfLines={1}
+                >
+                  {advisor?.fullName ?? "Your advisor"}
                 </Text>
                 <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
-                  30 phút · Phòng 305 Tòa Beta / Online
+                  30 minutes · in person or online
                 </Text>
               </View>
-              <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: ORANGE }}>
+              <View
+                className="rounded-full px-2.5 py-1"
+                style={{ backgroundColor: ORANGE }}
+              >
                 <Text className="text-[11px] font-bold text-white tabular-nums">
-                  {selectedSlot.start}
+                  {timeOf(selectedSlot.startTime)}
                 </Text>
               </View>
             </View>
 
             <Text className="mb-1.5 mt-4 text-sm font-bold text-ink dark:text-ink-dark">
-              Lý do buổi hẹn <Text style={{ color: ORANGE }}>*</Text>
+              Reason for the session <Text style={{ color: ORANGE }}>*</Text>
             </Text>
             <View className="mb-2 flex-row flex-wrap gap-2">
               {QUICK_REASONS.map((q) => (
@@ -678,24 +798,32 @@ export default function AppointmentsScreen() {
                 setReason(t);
                 if (reasonError) setReasonError(null);
               }}
-              placeholder="Ví dụ: Em muốn tư vấn chọn môn kỳ tới phù hợp với GPA 7.4 và định hướng AI…"
+              placeholder="e.g. I want advice on which courses to take next semester given my current GPA and the AI track…"
               placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
               className="min-h-[110px] rounded-2xl border px-4 py-3 text-sm leading-5 text-ink dark:text-ink-dark"
               style={{
-                borderColor: reasonError ? "#DC2626" : isDark ? "#302A24" : "#EAE1D8",
+                borderColor: reasonError
+                  ? "#DC2626"
+                  : isDark
+                    ? "#302A24"
+                    : "#EAE1D8",
                 backgroundColor: isDark ? "#12100E" : "#FAF7F4",
               }}
             />
             {reasonError ? (
-              <Text className="mt-1.5 text-xs font-semibold" style={{ color: "#DC2626" }}>
+              <Text
+                className="mt-1.5 text-xs font-semibold"
+                style={{ color: "#DC2626" }}
+              >
                 {reasonError}
               </Text>
             ) : (
               <Text className="mt-1.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
-                {reason.trim().length}/500 ký tự · càng cụ thể, advisor chuẩn bị càng tốt
+                {reason.trim().length}/500 characters · the more specific, the
+                better your advisor can prepare
               </Text>
             )}
 
@@ -703,7 +831,7 @@ export default function AppointmentsScreen() {
               onPress={confirmBooking}
               disabled={book.isPending}
               accessibilityRole="button"
-              accessibilityLabel="Xác nhận đặt lịch"
+              accessibilityLabel="Confirm the booking"
               className="mt-4 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-85"
               style={{ backgroundColor: ORANGE, opacity: book.isPending ? 0.7 : 1 }}
             >
@@ -711,19 +839,32 @@ export default function AppointmentsScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <MaterialCommunityIcons name="check-circle-outline" size={19} color="#fff" />
-                  <Text className="text-[15px] font-bold text-white">Xác nhận đặt lịch</Text>
+                  <MaterialCommunityIcons
+                    name="check-circle-outline"
+                    size={19}
+                    color="#fff"
+                  />
+                  <Text className="text-[15px] font-bold text-white">
+                    Confirm booking
+                  </Text>
                 </>
               )}
             </Pressable>
-            {book.isError && (
-              <Text className="mt-2 text-center text-xs font-semibold" style={{ color: "#DC2626" }}>
-                Đặt lịch thất bại, thử lại giúp bạn nhé.
+            {book.isError ? (
+              <Text
+                className="mt-2 text-center text-xs font-semibold"
+                style={{ color: "#DC2626" }}
+              >
+                The booking failed. Please try again.
               </Text>
-            )}
-            <Pressable onPress={() => setSelectedSlot(null)} className="mt-1 items-center py-3" hitSlop={10}>
+            ) : null}
+            <Pressable
+              onPress={() => setSelectedSlot(null)}
+              className="mt-1 items-center py-3"
+              hitSlop={10}
+            >
               <Text className="text-sm font-semibold text-ink-muted dark:text-ink-muted-dark">
-                Chọn khung giờ khác
+                Pick another slot
               </Text>
             </Pressable>
           </View>
@@ -737,20 +878,32 @@ export default function AppointmentsScreen() {
             <View className="flex-row items-center gap-3">
               <View
                 className="h-12 w-12 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" }}
+                style={{
+                  backgroundColor: "#FEF2F2",
+                  borderWidth: 1,
+                  borderColor: "#FECACA",
+                }}
               >
-                <MaterialCommunityIcons name="calendar-remove-outline" size={22} color="#DC2626" />
+                <MaterialCommunityIcons
+                  name="calendar-remove-outline"
+                  size={22}
+                  color="#DC2626"
+                />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-bold text-ink dark:text-ink-dark">Hủy lịch hẹn?</Text>
+                <Text className="text-lg font-bold text-ink dark:text-ink-dark">
+                  Cancel this session?
+                </Text>
                 <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark">
-                  {viLong(cancelTarget.date)} · {cancelTarget.start_time}–{cancelTarget.end_time}
+                  {longDate(dateOf(cancelTarget.startTime))} ·{" "}
+                  {timeOf(cancelTarget.startTime)}–
+                  {timeOf(cancelTarget.endTime)}
                 </Text>
               </View>
             </View>
 
             <Text className="mb-2 mt-4 text-sm font-bold text-ink dark:text-ink-dark">
-              Cho advisor biết lý do <Text style={{ color: "#DC2626" }}>*</Text>
+              Tell your advisor why <Text style={{ color: "#DC2626" }}>*</Text>
             </Text>
             <View className="gap-2">
               {CANCEL_REASONS.map((r) => {
@@ -764,7 +917,11 @@ export default function AppointmentsScreen() {
                     }}
                     className="flex-row items-center gap-3 rounded-2xl border px-4 py-3.5 active:opacity-70"
                     style={{
-                      borderColor: active ? "#DC2626" : isDark ? "#302A24" : "#EAE1D8",
+                      borderColor: active
+                        ? "#DC2626"
+                        : isDark
+                          ? "#302A24"
+                          : "#EAE1D8",
                       backgroundColor: active
                         ? isDark
                           ? "#2A1512"
@@ -776,16 +933,31 @@ export default function AppointmentsScreen() {
                   >
                     <View
                       className="h-5 w-5 items-center justify-center rounded-full border-2"
-                      style={{ borderColor: active ? "#DC2626" : isDark ? "#4A423B" : "#C3B8AD" }}
+                      style={{
+                        borderColor: active
+                          ? "#DC2626"
+                          : isDark
+                            ? "#4A423B"
+                            : "#C3B8AD",
+                      }}
                     >
                       {active && (
-                        <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#DC2626" }} />
+                        <View
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: "#DC2626" }}
+                        />
                       )}
                     </View>
                     <Text
                       className="flex-1 text-sm"
                       style={{
-                        color: active ? (isDark ? "#FCA5A5" : "#991B1B") : isDark ? "#F7F2EC" : "#191512",
+                        color: active
+                          ? isDark
+                            ? "#FCA5A5"
+                            : "#991B1B"
+                          : isDark
+                            ? "#F7F2EC"
+                            : "#191512",
                         fontWeight: active ? "700" : "500",
                       }}
                     >
@@ -798,7 +970,7 @@ export default function AppointmentsScreen() {
             <TextInput
               value={cancelCustom}
               onChangeText={setCancelCustom}
-              placeholder="Hoặc viết lý do khác…"
+              placeholder="Or write another reason…"
               placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
               className="mt-2 rounded-2xl border px-4 py-3 text-sm text-ink dark:text-ink-dark"
               style={{
@@ -814,22 +986,29 @@ export default function AppointmentsScreen() {
                 style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
               >
                 <Text className="text-[15px] font-bold text-ink-muted dark:text-ink-muted-dark">
-                  Giữ lịch
+                  Keep it
                 </Text>
               </Pressable>
               <Pressable
                 onPress={confirmCancel}
-                disabled={!(cancelReason || cancelCustom.trim()) || cancel.isPending}
+                disabled={
+                  !(cancelReason || cancelCustom.trim()) || cancel.isPending
+                }
                 className="flex-[1.4] items-center justify-center rounded-2xl py-4 active:opacity-85"
                 style={{
                   backgroundColor: "#DC2626",
-                  opacity: !(cancelReason || cancelCustom.trim()) || cancel.isPending ? 0.45 : 1,
+                  opacity:
+                    !(cancelReason || cancelCustom.trim()) || cancel.isPending
+                      ? 0.45
+                      : 1,
                 }}
               >
                 {cancel.isPending ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-[15px] font-bold text-white">Xác nhận hủy</Text>
+                  <Text className="text-[15px] font-bold text-white">
+                    Confirm cancel
+                  </Text>
                 )}
               </Pressable>
             </View>
@@ -846,15 +1025,15 @@ function SlotGroup({
   title,
   icon,
   slots,
-  selectedId,
+  selectedStart,
   onPick,
   isDark,
 }: {
   title: string;
   icon: string;
-  slots: TimeSlot[];
-  selectedId: string | null;
-  onPick: (s: TimeSlot) => void;
+  slots: AvailableSlot[];
+  selectedStart: string | null;
+  onPick: (s: AvailableSlot) => void;
   isDark: boolean;
 }) {
   if (slots.length === 0) return null;
@@ -863,50 +1042,54 @@ function SlotGroup({
       <View className="mb-2 flex-row items-center gap-1.5">
         <MaterialCommunityIcons name={icon as never} size={15} color={ORANGE} />
         <Text className="text-[13px] font-bold text-ink-muted dark:text-ink-muted-dark">
-          {title} ({slots.filter((s) => s.available).length}/{slots.length} trống)
+          {title} ({slots.length})
         </Text>
       </View>
       <View className="flex-row flex-wrap" style={{ gap: 10 }}>
         {slots.map((s) => {
-          const selected = s.id === selectedId;
+          const selected = s.startTime === selectedStart;
+          const label = timeOf(s.startTime);
           return (
             <Pressable
-              key={s.id}
-              onPress={() => s.available && onPick(s)}
-              disabled={!s.available}
+              key={s.startTime}
+              onPress={() => onPick(s)}
               accessibilityRole="button"
-              accessibilityLabel={`${s.start} đến ${s.end}${s.available ? "" : ", đã kín"}`}
+              accessibilityLabel={`${label} to ${timeOf(s.endTime)}`}
               className="items-center justify-center rounded-2xl py-3.5 active:opacity-70"
               style={{
                 width: "31%",
                 backgroundColor: selected
                   ? ORANGE
-                  : s.available
-                    ? isDark
-                      ? "#1B1815"
-                      : "#fff"
-                    : isDark
-                      ? "#1B1815"
-                      : "#F2EDE7",
+                  : isDark
+                    ? "#1B1815"
+                    : "#fff",
                 borderWidth: 1.5,
-                borderColor: selected ? ORANGE : s.available ? (isDark ? "#3A2A1C" : "#FFD9BE") : "transparent",
-                opacity: s.available ? 1 : 0.55,
+                borderColor: selected
+                  ? ORANGE
+                  : isDark
+                    ? "#3A2A1C"
+                    : "#FFD9BE",
               }}
             >
               <Text
                 className="text-[15px] font-bold tabular-nums"
                 style={{
-                  color: selected ? "#fff" : s.available ? (isDark ? "#F7F2EC" : "#191512") : isDark ? "#5A534B" : "#A89C90",
-                  textDecorationLine: s.available ? "none" : "line-through",
+                  color: selected ? "#fff" : isDark ? "#F7F2EC" : "#191512",
                 }}
               >
-                {s.start}
+                {label}
               </Text>
               <Text
                 className="mt-0.5 text-[10px] font-semibold"
-                style={{ color: selected ? "rgba(255,255,255,0.85)" : isDark ? "#7D746C" : "#8B8178" }}
+                style={{
+                  color: selected
+                    ? "rgba(255,255,255,0.85)"
+                    : isDark
+                      ? "#7D746C"
+                      : "#8B8178",
+                }}
               >
-                {s.available ? "Còn trống" : "Đã kín"}
+                Open
               </Text>
             </Pressable>
           );
@@ -923,13 +1106,13 @@ function AppointmentCard({
   highlight,
   onCancel,
 }: {
-  appointment: Appointment;
+  appointment: BookedAppointment;
   advisorName: string;
   isDark: boolean;
   highlight: boolean;
   onCancel: () => void;
 }) {
-  const v = viShort(appointment.date);
+  const v = shortDate(dateOf(appointment.startTime));
   return (
     <View
       className="overflow-hidden rounded-3xl border bg-surface dark:bg-surface-dark"
@@ -947,22 +1130,30 @@ function AppointmentCard({
           className="items-center justify-center rounded-2xl px-3 py-1.5"
           style={{ backgroundColor: ORANGE, minWidth: 58 }}
         >
-          <Text className="text-lg font-bold leading-5 text-white tabular-nums">{v.day}</Text>
+          <Text className="text-lg font-bold leading-5 text-white tabular-nums">
+            {v.day}
+          </Text>
           <Text className="text-[10px] font-bold text-white">
             {v.mon} · {v.dow}
           </Text>
         </View>
         <View className="flex-1">
           <Text className="text-[15px] font-bold text-ink tabular-nums dark:text-ink-dark">
-            {appointment.start_time} – {appointment.end_time}
+            {timeOf(appointment.startTime)} – {timeOf(appointment.endTime)}
           </Text>
-          <Text className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark" numberOfLines={1}>
-            {advisorName} · {appointment.location}
+          <Text
+            className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark"
+            numberOfLines={1}
+          >
+            {advisorName}
           </Text>
         </View>
         {highlight && (
-          <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: ORANGE }}>
-            <Text className="text-[10px] font-bold text-white">MỚI</Text>
+          <View
+            className="rounded-full px-2.5 py-1"
+            style={{ backgroundColor: ORANGE }}
+          >
+            <Text className="text-[10px] font-bold text-white">NEW</Text>
           </View>
         )}
       </View>
@@ -983,20 +1174,27 @@ function AppointmentCard({
             className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl py-3"
             style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
           >
-            <MaterialCommunityIcons name="video-outline" size={16} color={isDark ? "#FFA371" : ORANGE_DEEP} />
-            <Text className="text-xs font-bold" style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}>
-              {appointment.location.includes("Online") ? "Meet online" : "Gặp trực tiếp"}
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={16}
+              color={isDark ? "#FFA371" : ORANGE_DEEP}
+            />
+            <Text
+              className="text-xs font-bold"
+              style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+            >
+              {appointment.status === "PENDING" ? "Awaiting confirmation" : "Confirmed"}
             </Text>
           </View>
           <Pressable
             onPress={onCancel}
             accessibilityRole="button"
-            accessibilityLabel="Hủy lịch hẹn"
+            accessibilityLabel="Cancel this session"
             className="flex-1 items-center justify-center rounded-2xl border py-3 active:opacity-70"
             style={{ borderColor: "#FECACA", backgroundColor: isDark ? "#2A1512" : "#fff" }}
           >
             <Text className="text-xs font-bold" style={{ color: "#DC2626" }}>
-              Hủy lịch
+              Cancel
             </Text>
           </Pressable>
         </View>

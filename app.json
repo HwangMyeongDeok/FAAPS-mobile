@@ -33,7 +33,14 @@
     },
     "extra": {
       "apiBaseUrl": "",
-      "isMockMode": true
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "812304cf-457a-468e-9946-69e693a21fef"
+      }
     }
   }
 }

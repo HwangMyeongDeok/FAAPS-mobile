@@ -1,9 +1,10 @@
 /**
  * Session token accessor.
  *
- * Lives in its own module so that service files can attach the
- * `Authorization: Bearer <token>` header without importing the auth store
- * (which would create a circular dependency: store → api/auth → store).
+ * The FAAPS backend is session based, so there is no bearer token to store:
+ * the session lives in the platform cookie jar. The persisted object below is
+ * only a *snapshot* of who is signed in, used to render the UI before the
+ * first `/api/auth/me` round-trip resolves.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -22,8 +23,20 @@ export async function readSession(): Promise<AuthSession | null> {
   }
 }
 
-/** Read just the bearer token, ready to hand to the `http` wrapper. */
-export async function getAuthToken(): Promise<string | null> {
-  const session = await readSession();
-  return session?.token ?? null;
+/** Persist the session snapshot. */
+export async function writeSession(session: AuthSession): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(session));
+  } catch {
+    /* storage is best-effort */
+  }
+}
+
+/** Drop the persisted session. */
+export async function clearSession(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(SESSIONS_KEY);
+  } catch {
+    /* storage is best-effort */
+  }
 }

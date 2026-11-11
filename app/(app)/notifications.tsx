@@ -1,10 +1,10 @@
 /**
  * FE-S-9 — In-app notification centre.
  *
- * The screen answers one question: "Có gì mới cần tôi đọc?"
+ * The screen answers one question: "Is there anything new I need to read?"
  * It is a list to work through, so it stays quiet: flat rows on the warm
  * paper ground, one orange accent reserved for the unread state and the
- * single primary action ("Đọc tất cả").
+ * single primary action ("Mark all read").
  */
 
 import { useMemo, useState } from "react";
@@ -27,35 +27,39 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/lib/queries/notifications";
-import type { AppNotification, NotificationKind } from "@/types";
+import type { AppNotification } from "@/types";
 
 const ORANGE = "#F36F21";
 const ORANGE_DEEP = "#B5460D";
 
-const KIND_LABEL: Record<NotificationKind, string> = {
-  PLAN: "Kế hoạch",
-  ADVISOR: "Advisor",
-  GRADE: "Điểm",
-  SYSTEM: "Hệ thống",
+const KIND_LABEL: Record<string, string> = {
+  PLAN_STATUS: "Study plan",
+  MESSAGE: "Message",
+  ADVISOR_REQUEST: "Advisor",
+  REMINDER: "Reminder",
+  WARNING: "Warning",
+  INFO: "System",
 };
 
-const KIND_DOT: Record<NotificationKind, string> = {
-  PLAN: ORANGE,
-  ADVISOR: "#2563EB",
-  GRADE: "#059669",
-  SYSTEM: "#9CA3AF",
+const KIND_DOT: Record<string, string> = {
+  PLAN_STATUS: ORANGE,
+  MESSAGE: "#2563EB",
+  ADVISOR_REQUEST: "#2563EB",
+  REMINDER: "#059669",
+  WARNING: "#DC2626",
+  INFO: "#9CA3AF",
 };
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "vừa xong";
-  if (m < 60) return `${m} phút trước`;
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} giờ trước`;
+  if (h < 24) return `${h} h ago`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} ngày trước`;
-  return new Date(iso).toLocaleDateString("vi-VN");
+  if (d < 7) return `${d} d ago`;
+  return new Date(iso).toLocaleDateString("en-US");
 }
 
 type Filter = "all" | "unread";
@@ -73,30 +77,29 @@ export default function NotificationsScreen() {
   const dotRead = isDark ? "#4A423B" : "#D6CCC3";
   const chevron = isDark ? "#4A423B" : "#C3B8AD";
 
-  const notifications = useMemo(() => data ?? [], [data]);
-  const unreadCount = notifications.filter((n) => !n.read_at).length;
+  const notifications = useMemo(() => data?.items ?? [], [data]);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const visible = useMemo(
     () =>
       filter === "unread"
-        ? notifications.filter((n) => !n.read_at)
+        ? notifications.filter((n) => !n.isRead)
         : notifications,
-    [filter, notifications]
+    [filter, notifications],
   );
 
   /**
    * A tap does two things: it clears the unread state and it follows the
-   * deep link the notification carries. Every href in the mock database now
-   * points at a route that exists, so this never dead-ends.
+   * deep link the notification carries, when that link points at a route
+   * this app actually has.
    */
   const onPress = (n: AppNotification) => {
-    if (!n.read_at) markRead.mutate(n.id);
-    if (!n.href) return;
+    if (!n.isRead) markRead.mutate(n.id);
+    const href = n.actionUrl;
+    if (!href) return;
     // A link back to this screen would be a no-op — leave the user in place.
-    if (n.href.startsWith("/(app)/notifications")) return;
-    // A link to the profile tab still resolves, but the tabs live under
-    // `(tabs)` now — keep the group so the tab navigator receives it.
-    router.push(n.href as never);
+    if (href.startsWith("/(app)/notifications")) return;
+    router.push(href as never);
   };
 
   return (
@@ -105,11 +108,11 @@ export default function NotificationsScreen() {
       edges={["top"]}
     >
       <ScreenHeader
-        title="Thông báo"
+        title="Notifications"
         subtitle={
           unreadCount > 0
-            ? `${unreadCount} thông báo chưa đọc`
-            : "Bạn đã đọc hết thông báo"
+            ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`
+            : "You are all caught up"
         }
         onBack={goBack}
         right={
@@ -123,7 +126,7 @@ export default function NotificationsScreen() {
               style={{ backgroundColor: tint }}
             >
               <Text className="text-xs font-bold" style={{ color: tintInk }}>
-                Đọc tất cả
+                Mark all read
               </Text>
             </Pressable>
           ) : null
@@ -133,13 +136,13 @@ export default function NotificationsScreen() {
       {/* Filter — one row of chips, the list starts right under it */}
       <View className="flex-row gap-2 px-5 pt-4">
         <FilterChip
-          label="Tất cả"
+          label="All"
           count={notifications.length}
           active={filter === "all"}
           onPress={() => setFilter("all")}
         />
         <FilterChip
-          label="Chưa đọc"
+          label="Unread"
           count={unreadCount}
           active={filter === "unread"}
           onPress={() => setFilter("unread")}
@@ -158,7 +161,7 @@ export default function NotificationsScreen() {
             color="#CBD5E1"
           />
           <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-            Không tải được thông báo. Kéo xuống để thử lại.
+            Could not load your notifications. Pull down to try again.
           </Text>
         </View>
       ) : (
@@ -192,12 +195,12 @@ export default function NotificationsScreen() {
               </View>
               <Text className="mt-4 text-center text-sm font-semibold text-ink dark:text-ink-dark">
                 {filter === "unread"
-                  ? "Không có thông báo chưa đọc"
-                  : "Chưa có thông báo nào"}
+                  ? "No unread notifications"
+                  : "No notifications yet"}
               </Text>
               <Text className="mt-1 text-center text-xs text-ink-muted dark:text-ink-muted-dark">
-                Khi advisor phản hồi hoặc kế hoạch học tập được cập nhật, bạn sẽ
-                thấy ở đây.
+                When your advisor replies or a study plan is updated, it shows
+                up here.
               </Text>
             </View>
           }
@@ -205,26 +208,26 @@ export default function NotificationsScreen() {
             <Pressable
               onPress={() => onPress(item)}
               accessibilityRole="button"
-              accessibilityLabel={`${item.title}. ${item.body}`}
+              accessibilityLabel={`${item.title}. ${item.message}`}
               className="flex-row items-start gap-3 py-4 active:opacity-70"
             >
               <View
                 className="mt-1.5 h-2.5 w-2.5 rounded-full"
                 style={{
-                  backgroundColor: item.read_at
+                  backgroundColor: item.isRead
                     ? dotRead
-                    : (KIND_DOT[item.kind] ?? "#9CA3AF"),
+                    : (KIND_DOT[item.notificationType] ?? "#9CA3AF"),
                 }}
               />
               <View className="flex-1">
                 <View className="flex-row items-start justify-between gap-3">
                   <Text
                     className="flex-1 text-[15px] leading-5 text-ink dark:text-ink-dark"
-                    style={item.read_at ? undefined : { fontWeight: "700" }}
+                    style={item.isRead ? undefined : { fontWeight: "700" }}
                   >
                     {item.title}
                   </Text>
-                  {!item.read_at && (
+                  {!item.isRead && (
                     <View
                       className="rounded-full px-2 py-0.5"
                       style={{ backgroundColor: tint }}
@@ -233,19 +236,21 @@ export default function NotificationsScreen() {
                         className="text-[10px] font-bold"
                         style={{ color: tintInk }}
                       >
-                        MỚI
+                        NEW
                       </Text>
                     </View>
                   )}
                 </View>
                 <Text className="mt-1 text-[13px] leading-5 text-ink-muted dark:text-ink-muted-dark">
-                  {item.body}
+                  {item.message}
                 </Text>
                 <Text className="mt-1.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
-                  {KIND_LABEL[item.kind] ?? item.kind} · {timeAgo(item.created_at)}
+                  {KIND_LABEL[item.notificationType] ?? item.notificationType} ·{" "}
+                  {timeAgo(item.createdAt)}
                 </Text>
               </View>
-              {item.href && !item.href.startsWith("/(app)/notifications") ? (
+              {item.actionUrl &&
+              !item.actionUrl.startsWith("/(app)/notifications") ? (
                 <MaterialCommunityIcons
                   name="chevron-right"
                   size={20}

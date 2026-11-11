@@ -7,3 +7,5 @@ export * from "./appointments";
 export * from "./course";
 export * from "./notifications";
 export * from "./transcript";
+export * from "./ai";
+export * from "./token";

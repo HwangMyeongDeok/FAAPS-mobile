@@ -1,93 +1,72 @@
 /**
- * React Query hooks for advisor data + conversations.
+ * React Query hooks for the advising requests and their conversations.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  cancelAdvisingRequest,
   createAdvisingRequest,
-  getAdvisors,
-  getConversations,
-  getMessages,
-  sendMessage,
-  markConversationRead,
+  getAdvisingRequestDetail,
+  getAdvisingRequests,
+  sendAdvisingMessage,
 } from "@/lib/api/advisor";
-import { useAuthStore } from "@/stores/auth";
 
 export const advisorKeys = {
   all: ["advisor"] as const,
-  list: () => ["advisor", "list"] as const,
-  conversations: (studentId: string) => ["advisor", "conversations", studentId] as const,
-  messages: (convId: string) => ["advisor", "messages", convId] as const,
+  requests: () => ["advisor", "requests"] as const,
+  detail: (requestId: string) => ["advisor", "requests", requestId] as const,
 };
 
-export function useAdvisors() {
+export function useAdvisingRequests() {
   return useQuery({
-    queryKey: advisorKeys.list(),
-    queryFn: getAdvisors,
-    staleTime: 10 * 60_000,
-  });
-}
-
-export function useConversations() {
-  const studentId = useAuthStore((s) => s.session?.user.id ?? null);
-  return useQuery({
-    queryKey: studentId ? advisorKeys.conversations(studentId) : ["advisor", "conversations", "none"],
-    queryFn: () => getConversations(studentId!),
-    enabled: !!studentId,
+    queryKey: advisorKeys.requests(),
+    queryFn: getAdvisingRequests,
     staleTime: 60_000,
   });
 }
 
-export function useMessages(conversationId: string | null) {
+export function useAdvisingRequestDetail(requestId: string | null) {
   return useQuery({
-    queryKey: conversationId ? advisorKeys.messages(conversationId) : ["advisor", "messages", "none"],
-    queryFn: () => getMessages(conversationId!),
-    enabled: !!conversationId,
+    queryKey: requestId ? advisorKeys.detail(requestId) : ["advisor", "requests", "none"],
+    queryFn: () => getAdvisingRequestDetail(requestId!),
+    enabled: !!requestId,
     staleTime: 30_000,
   });
 }
 
-export function useSendMessage(conversationId: string) {
+export function useSendAdvisingMessage(requestId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) => sendMessage(conversationId, content),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: advisorKeys.messages(conversationId) });
-      const studentId = useAuthStore.getState().session?.user.id;
-      if (studentId) qc.invalidateQueries({ queryKey: advisorKeys.conversations(studentId) });
+    mutationFn: (content: string) => sendAdvisingMessage(requestId, content),
+    onSuccess: (data) => {
+      qc.setQueryData(advisorKeys.detail(requestId), data);
+      qc.invalidateQueries({ queryKey: advisorKeys.requests() });
     },
   });
 }
 
-export function useMarkConversationRead(conversationId: string) {
+export function useCancelAdvisingRequest(requestId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => markConversationRead(conversationId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: advisorKeys.messages(conversationId) });
-      const studentId = useAuthStore.getState().session?.user.id;
-      if (studentId) qc.invalidateQueries({ queryKey: advisorKeys.conversations(studentId) });
+    mutationFn: () => cancelAdvisingRequest(requestId),
+    onSuccess: (data) => {
+      qc.setQueryData(advisorKeys.detail(requestId), data);
+      qc.invalidateQueries({ queryKey: advisorKeys.requests() });
     },
   });
 }
 
 /**
- * Create a new advising request. The conversation list is invalidated on
- * success so the new thread appears at the top of the inbox, and the
- * caller navigates straight into it.
+ * Create a new advising request. The backend assigns it to the student's own
+ * advisor, so the request only carries a title and a description.
  */
 export function useCreateAdvisingRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      student_id: string;
-      advisor_id: string;
-      subject: string;
-      content: string;
-    }) => createAdvisingRequest(input),
+    mutationFn: (input: { title: string; description: string }) =>
+      createAdvisingRequest(input),
     onSuccess: () => {
-      const studentId = useAuthStore.getState().session?.user.id;
-      if (studentId) qc.invalidateQueries({ queryKey: advisorKeys.conversations(studentId) });
+      qc.invalidateQueries({ queryKey: advisorKeys.requests() });
     },
   });
 }

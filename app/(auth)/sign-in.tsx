@@ -1,20 +1,42 @@
 import { LogIn, Sparkles } from "lucide-react-native";
-import { Text, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Badge, Button } from "@/components/ui";
 import { useAuthStore } from "@/stores/auth";
-import { config } from "@/config/api";
 
 export default function SignIn() {
-  const signIn = useAuthStore((s) => s.signInWithGoogle);
+  const signIn = useAuthStore((s) => s.signIn);
   const status = useAuthStore((s) => s.status);
   const loading = status === "authenticating";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   if (status === "authenticated") {
     return <Redirect href="/(app)" />;
   }
+
+  const onSubmit = async () => {
+    const mail = email.trim();
+    if (!mail || !password) {
+      setError("Enter your email and password to continue.");
+      return;
+    }
+    setError(null);
+    try {
+      await signIn({ email: mail, password });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Sign in failed. Please check your credentials.",
+      );
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -31,7 +53,7 @@ export default function SignIn() {
             FPT AI Academic Planning System
           </Text>
           <Text className="text-sm text-muted-foreground/80 text-center mt-1">
-            Dành cho sinh viên FPT Hồ Chí Minh
+            For FPT University HCMC students
           </Text>
 
           {/* Feature pills */}
@@ -39,44 +61,80 @@ export default function SignIn() {
             <Badge variant="secondary">
               <View className="flex-row items-center gap-1">
                 <Sparkles size={12} color="hsl(222.2 47.4% 11.2%)" />
-                <Text>AI kế hoạch học tập</Text>
+                <Text>AI study planning</Text>
               </View>
             </Badge>
-            <Badge variant="secondary">Tư vấn 1-1</Badge>
-            <Badge variant="secondary">Theo dõi GPA</Badge>
+            <Badge variant="secondary">1-on-1 advising</Badge>
+            <Badge variant="secondary">GPA tracking</Badge>
           </View>
-
-          {config.isMockMode && (
-            <View className="mt-4 px-3 py-1 rounded-full bg-amber-100">
-              <Text className="text-xs font-medium text-amber-800">
-                🛠 Mock mode — không có backend thật
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* Bottom — sign-in card */}
         <View>
           <View className="rounded-2xl bg-card border border-border p-5">
             <Text className="text-base font-semibold text-foreground mb-2">
-              Đăng nhập bằng Google
+              Sign in
             </Text>
             <Text className="text-sm text-muted-foreground leading-5 mb-5">
-              FAAPS chỉ cho phép đăng nhập bằng tài khoản Google đã được FPT
-              cấp quyền. Điều này đảm bảo thông tin của bạn luôn đồng bộ với
-              cổng FAP.
+              Use the FPT account issued to you. Your academic data stays in
+              sync with the FAP portal.
             </Text>
+
+            <Text className="text-xs font-semibold text-foreground mb-1.5">
+              Email
+            </Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="student@fpt.edu.vn"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              editable={!loading}
+              className="rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground"
+            />
+
+            <Text className="text-xs font-semibold text-foreground mb-1.5 mt-4">
+              Password
+            </Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Your password"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
+              autoCapitalize="none"
+              editable={!loading}
+              onSubmitEditing={onSubmit}
+              returnKeyType="go"
+              className="rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground"
+            />
+
+            {error ? (
+              <Text className="mt-3 text-xs font-semibold text-red-500">
+                {error}
+              </Text>
+            ) : null}
+
             <Button
-              label="Sign in with Google"
+              label="Sign in"
               variant="primary"
               size="lg"
               loading={loading}
               leftIcon={<LogIn size={18} color="#fff" />}
-              onPress={() => signIn()}
+              onPress={onSubmit}
             />
           </View>
+
+          {loading ? (
+            <View className="mt-4 items-center">
+              <ActivityIndicator color="#F36F21" />
+            </View>
+          ) : null}
+
           <Text className="text-center text-xs text-muted-foreground mt-4">
-            Bằng việc tiếp tục, bạn đồng ý với quy chế sử dụng của FAAPS.
+            By continuing, you agree to the FAAPS terms of use.
           </Text>
         </View>
       </View>

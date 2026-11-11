@@ -10,10 +10,10 @@ export const generatePlanSchema = z.object({
     .number()
     .min(1)
     .max(20)
-    .describe("Number of semesters to spread courses over"),
+    .describe("Number of semesters to spread the courses over"),
   completed_course_ids: z
     .array(z.string())
-    .describe("IDs of already-completed courses"),
+    .describe("IDs of the courses already completed"),
   note: z.string().max(500).optional(),
 });
 
