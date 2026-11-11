@@ -1,59 +1,39 @@
 /**
- * Notifications service — in-app & push notifications.
- *
- * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
- * The `else` branch already contains the real HTTP calls. Flip
- * `config.isMockMode` to false (app.json → extra, or EXPO_PUBLIC_MOCK_MODE)
- * to switch over.
+ * Notifications service — the in-app notification centre.
  */
-import { config } from "@/config/api";
 import { http } from "@/lib/http";
-import { getAuthToken } from "@/lib/api/token";
-import { mockDelay } from "@/lib/db/mockDelay";
-import { mockNotifications } from "@/lib/db/mockDb";
-import type { AppNotification } from "@/types";
+import type { NotificationPage } from "@/types";
 
-export type { AppNotification, NotificationKind } from "@/types";
+export type { AppNotification } from "@/types";
 
-export async function getNotifications(userId: string): Promise<AppNotification[]> {
-  if (config.isMockMode) {
-    await mockDelay();
-    return mockNotifications
-      .filter((n) => n.user_id === userId)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }
-
-  // TODO: Wire BE later
-  const token = await getAuthToken();
-  return http.get<AppNotification[]>(`/api/users/${userId}/notifications`, { token });
+/** `GET /api/student/notifications?unreadOnly=&page=&size=` */
+export async function getNotifications(
+  options: { unreadOnly?: boolean; page?: number; size?: number } = {},
+): Promise<NotificationPage> {
+  const query = new URLSearchParams({
+    unreadOnly: String(options.unreadOnly ?? false),
+    page: String(options.page ?? 0),
+    size: String(options.size ?? 50),
+  });
+  return http.get<NotificationPage>(`/api/student/notifications?${query}`);
 }
 
+/** `GET /api/student/notifications/unread-count` */
+export async function getUnreadCount(): Promise<number> {
+  const body = await http.get<{ unreadCount: number }>(
+    "/api/student/notifications/unread-count",
+  );
+  return body.unreadCount ?? 0;
+}
+
+/** `PATCH /api/student/notifications/{id}/read` */
 export async function markNotificationRead(notificationId: string): Promise<void> {
-  if (config.isMockMode) {
-    await mockDelay(150);
-    const n = mockNotifications.find((x) => x.id === notificationId);
-    if (n) n.read_at = new Date().toISOString();
-    return;
-  }
-
-  // TODO: Wire BE later
-  const token = await getAuthToken();
-  await http.post<void>(`/api/notifications/${notificationId}/read`, undefined, { token });
+  await http.patch<{ updated: boolean }>(
+    `/api/student/notifications/${notificationId}/read`,
+  );
 }
 
-export async function markAllNotificationsRead(userId: string): Promise<void> {
-  if (config.isMockMode) {
-    await mockDelay(200);
-    const now = new Date().toISOString();
-    mockNotifications
-      .filter((n) => n.user_id === userId)
-      .forEach((n) => {
-        n.read_at = now;
-      });
-    return;
-  }
-
-  // TODO: Wire BE later
-  const token = await getAuthToken();
-  await http.post<void>(`/api/users/${userId}/notifications/read-all`, undefined, { token });
+/** `PATCH /api/student/notifications/read-all` */
+export async function markAllNotificationsRead(): Promise<void> {
+  await http.patch<{ updated: number }>("/api/student/notifications/read-all");
 }

@@ -1,3 +1,6 @@
+/**
+ * React Query hooks for the appointment booking.
+ */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -6,28 +9,28 @@ import {
   getAvailability,
   getMyAppointments,
 } from "@/lib/api/appointments";
-import { useAuthStore } from "@/stores/auth";
 
 export const appointmentKeys = {
   all: ["appointments"] as const,
-  mine: (studentId: string) => ["appointments", "mine", studentId] as const,
-  slots: (date: string) => ["appointments", "slots", date] as const,
+  mine: () => ["appointments", "mine"] as const,
+  slots: (date: string, advisorId?: string) =>
+    ["appointments", "slots", date, advisorId ?? "assigned"] as const,
 };
 
 export function useMyAppointments() {
-  const studentId = useAuthStore((s) => s.session?.user.id ?? null);
   return useQuery({
-    queryKey: studentId ? appointmentKeys.mine(studentId) : ["appointments", "mine", "none"],
-    queryFn: () => getMyAppointments(studentId!),
-    enabled: !!studentId,
+    queryKey: appointmentKeys.mine(),
+    queryFn: getMyAppointments,
     staleTime: 30_000,
   });
 }
 
-export function useAvailability(date: string | null) {
+export function useAvailability(date: string | null, advisorId?: string) {
   return useQuery({
-    queryKey: date ? appointmentKeys.slots(date) : ["appointments", "slots", "none"],
-    queryFn: () => getAvailability(date!),
+    queryKey: date
+      ? appointmentKeys.slots(date, advisorId)
+      : ["appointments", "slots", "none"],
+    queryFn: () => getAvailability(date!, advisorId),
     enabled: !!date,
     staleTime: 30_000,
   });
@@ -35,24 +38,22 @@ export function useAvailability(date: string | null) {
 
 export function useBookAppointment() {
   const qc = useQueryClient();
-  const studentId = useAuthStore((s) => s.session?.user.id ?? null);
   return useMutation({
     mutationFn: bookAppointment,
-    onSuccess: (_appt, vars) => {
-      if (studentId) qc.invalidateQueries({ queryKey: appointmentKeys.mine(studentId) });
-      qc.invalidateQueries({ queryKey: appointmentKeys.slots(vars.date) });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: appointmentKeys.mine() });
+      qc.invalidateQueries({ queryKey: ["appointments", "slots"] });
     },
   });
 }
 
 export function useCancelAppointment() {
   const qc = useQueryClient();
-  const studentId = useAuthStore((s) => s.session?.user.id ?? null);
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       cancelAppointment(id, reason),
     onSuccess: () => {
-      if (studentId) qc.invalidateQueries({ queryKey: appointmentKeys.mine(studentId) });
+      qc.invalidateQueries({ queryKey: appointmentKeys.mine() });
       qc.invalidateQueries({ queryKey: ["appointments", "slots"] });
     },
   });

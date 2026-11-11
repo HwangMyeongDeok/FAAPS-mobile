@@ -1,31 +1,31 @@
 import { z } from "zod";
 
 export const signInSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
-  password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const signUpSchema = z
   .object({
-    full_name: z.string().min(2, "Tên tối thiểu 2 ký tự"),
-    email: z.string().email("Email không hợp lệ"),
-    password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+    full_name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
     confirm_password: z.string(),
-    student_code: z.string().min(6, "Mã sinh viên không hợp lệ"),
+    student_code: z.string().min(6, "Invalid student ID"),
   })
   .refine((data) => data.password === data.confirm_password, {
-    message: "Mật khẩu xác nhận không khớp",
+    message: "The passwords do not match",
     path: ["confirm_password"],
   });
 
 export const updatePasswordSchema = z
   .object({
-    current_password: z.string().min(1, "Nhập mật khẩu hiện tại"),
-    new_password: z.string().min(8, "Mật khẩu mới tối thiểu 8 ký tự"),
+    current_password: z.string().min(1, "Enter your current password"),
+    new_password: z.string().min(8, "The new password must be at least 8 characters"),
     confirm_password: z.string(),
   })
   .refine((data) => data.new_password === data.confirm_password, {
-    message: "Mật khẩu xác nhận không khớp",
+    message: "The passwords do not match",
     path: ["confirm_password"],
   });
 

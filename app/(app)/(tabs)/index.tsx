@@ -1,3 +1,14 @@
+/**
+ * FE-S-1 — Home dashboard.
+ *
+ * The screen answers one question: "Where do I stand right now?"
+ * It is built entirely from the real backend data:
+ *   • `GET /api/student/profile`    → identity, major, current semester, GPA
+ *   • `GET /api/student/progress`   → required vs earned credits
+ *   • `GET /api/student/advisor`    → the assigned advisor
+ *   • `GET /api/student/notifications` → the latest reminders
+ */
+
 import { useMemo } from "react";
 import {
   ActivityIndicator,
@@ -14,10 +25,9 @@ import { router } from "expo-router";
 
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMyProfile } from "@/lib/queries/profile";
-import { useNotifications } from "@/lib/queries/notifications";
-import { useRecommendedCourses } from "@/lib/queries/course";
-import { useAuthStore } from "@/stores/auth";
+import { useMyAdvisor, useMyProfile, useMyProgress } from "@/lib/queries/profile";
+import { useNotifications, useUnreadCount } from "@/lib/queries/notifications";
+import { useCourses } from "@/lib/queries/course";
 
 // ─── FPT orange soul, warm paper ground ──────────────────────────────────────
 // Direction: editorial-greeting (app home) mapped onto the FPT brand.
@@ -29,10 +39,10 @@ const ORANGE_DEEP = "#B5460D";
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 11) return "Chào buổi sáng";
-  if (h < 14) return "Chào buổi trưa";
-  if (h < 18) return "Chào buổi chiều";
-  return "Chào buổi tối";
+  if (h < 11) return "Good morning";
+  if (h < 14) return "Good afternoon";
+  if (h < 18) return "Good evening";
+  return "Good night";
 }
 
 function firstName(full: string): string {
@@ -49,92 +59,135 @@ function initials(name: string): string {
     .join("");
 }
 
-function todayVi(): string {
+function today(): string {
   const d = new Date();
-  const weekdays = [
-    "Chủ nhật",
-    "Thứ Hai",
-    "Thứ Ba",
-    "Thứ Tư",
-    "Thứ Năm",
-    "Thứ Sáu",
-    "Thứ Bảy",
-  ];
-  return `${weekdays[d.getDay()]}, ${d.getDate()}/${
-    d.getMonth() + 1
-  }/${d.getFullYear()}`;
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
-function gpaRank(gpa: number): { label: string; color: string; bg: string } {
-  if (gpa >= 8)
-    return { label: "Giỏi", color: "#047857", bg: "rgba(255,255,255,0.22)" };
-  if (gpa >= 6.5)
-    return { label: "Khá", color: "#FFFFFF", bg: "rgba(255,255,255,0.22)" };
-  if (gpa >= 5)
-    return {
-      label: "Trung bình",
-      color: "#FFFFFF",
-      bg: "rgba(255,255,255,0.22)",
-    };
-  return { label: "Cần cố gắng", color: "#FFFFFF", bg: "rgba(0,0,0,0.22)" };
+function gpaRank(gpa: number | null): { label: string; color: string; bg: string } {
+  const value = gpa ?? 0;
+  if (value >= 8)
+    return { label: "Excellent", color: "#047857", bg: "rgba(255,255,255,0.22)" };
+  if (value >= 6.5)
+    return { label: "Good", color: "#FFFFFF", bg: "rgba(255,255,255,0.22)" };
+  if (value >= 5)
+    return { label: "Average", color: "#FFFFFF", bg: "rgba(255,255,255,0.22)" };
+  return { label: "Needs improvement", color: "#FFFFFF", bg: "rgba(0,0,0,0.22)" };
 }
 
-const KIND_DOT: Record<string, string> = {
-  PLAN: ORANGE,
-  ADVISOR: "#2563EB",
-  GRADE: "#059669",
-  SYSTEM: "#9CA3AF",
+const NOTIFICATION_DOT: Record<string, string> = {
+  PLAN_STATUS: ORANGE,
+  MESSAGE: "#2563EB",
+  ADVISOR_REQUEST: "#2563EB",
+  REMINDER: "#059669",
+  WARNING: "#DC2626",
+  INFO: "#9CA3AF",
 };
 
-const KIND_LABEL: Record<string, string> = {
-  PLAN: "Kế hoạch",
-  ADVISOR: "Advisor",
-  GRADE: "Điểm",
-  SYSTEM: "Hệ thống",
+const NOTIFICATION_LABEL: Record<string, string> = {
+  PLAN_STATUS: "Study plan",
+  MESSAGE: "Message",
+  ADVISOR_REQUEST: "Advisor",
+  REMINDER: "Reminder",
+  WARNING: "Warning",
+  INFO: "System",
 };
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "vừa xong";
-  if (m < 60) return `${m} phút trước`;
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} giờ trước`;
+  if (h < 24) return `${h} h ago`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} ngày trước`;
-  return new Date(iso).toLocaleDateString("vi-VN");
+  if (d < 7) return `${d} d ago`;
+  return new Date(iso).toLocaleDateString("en-US");
 }
 
 export default function HomeScreen() {
-  const userId = useAuthStore((s) => s.session?.user.id ?? null);
   const isDark = useColorScheme() === "dark";
+
   const {
     data: profile,
     isLoading: profileLoading,
     isError: profileError,
     refetch: refetchProfile,
-  } = useMyProfile(userId);
-  const { data: notifications = [], refetch: refetchNotifs } =
-    useNotifications();
-  const { data: recommended = [], refetch: refetchRec } =
-    useRecommendedCourses();
+  } = useMyProfile();
+  const { data: progress, refetch: refetchProgress } = useMyProgress();
+  const { data: advisor, refetch: refetchAdvisor } = useMyAdvisor();
+  const { data: notifications, refetch: refetchNotifs } = useNotifications();
+  const { data: unreadCount = 0, refetch: refetchUnread } = useUnreadCount();
+  const { data: coursesData, refetch: refetchCourses } = useCourses({ size: 6 });
+  const courses = useMemo(
+    () => coursesData?.pages.flatMap((p) => p) ?? [],
+    [coursesData],
+  );
 
   const refreshing = profileLoading;
+
   const onRefresh = () => {
     refetchProfile();
+    refetchProgress();
+    refetchAdvisor();
     refetchNotifs();
-    refetchRec();
+    refetchUnread();
+    refetchCourses();
   };
 
   const stats = useMemo(() => {
-    if (!profile) return null;
-    const earned = profile.student.total_credits_earned;
-    const total = profile.major.total_credits;
+    if (!progress) return null;
+    const earned = progress.earnedCredits ?? 0;
+    const total = progress.requiredCredits ?? 0;
     const pct =
       total === 0 ? 0 : Math.min(100, Math.round((earned / total) * 100));
     const left = Math.max(0, total - earned);
     return { earned, total, pct, left };
-  }, [profile]);
+  }, [progress]);
+
+  if (profileLoading || !profile || !stats) {
+    return (
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 48 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <HomeSkeleton />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
+        <View className="mx-5 mt-10 items-center rounded-3xl bg-surface p-8 dark:bg-surface-dark">
+          <MaterialCommunityIcons
+            name="cloud-off-outline"
+            size={40}
+            color="#CBD5E1"
+          />
+          <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
+            Could not load your student record. Pull down to try again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const gpa = profile.currentGpa ?? progress?.currentGpa ?? null;
 
   return (
     <SafeAreaView
@@ -153,648 +206,583 @@ export default function HomeScreen() {
           />
         }
       >
-        {profileLoading || !profile || !stats ? (
-          <HomeSkeleton />
-        ) : profileError ? (
-          <View className="mx-5 mt-10 items-center rounded-3xl bg-surface p-8 dark:bg-surface-dark">
-            <MaterialCommunityIcons
-              name="cloud-off-outline"
-              size={40}
-              color="#CBD5E1"
-            />
-            <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-              Không tải được thông tin sinh viên. Kéo xuống để thử lại.
+        {/* ── 1. Top bar: identity + bell ─────────────────────────── */}
+        <View className="flex-row items-center gap-3 px-5 pt-4">
+          <View
+            className="h-12 w-12 items-center justify-center rounded-full"
+            style={{ backgroundColor: ORANGE }}
+          >
+            <Text className="text-base font-bold text-white">
+              {initials(profile.fullName)}
             </Text>
           </View>
-        ) : (
-          <>
-            {/* ── 1. Top bar: identity + bell ─────────────────────────── */}
-            <View className="flex-row items-center gap-3 px-5 pt-4">
+          <View className="flex-1">
+            <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">
+              {today()}
+            </Text>
+            <Text
+              accessibilityRole="header"
+              className="text-[17px] font-bold text-ink dark:text-ink-dark"
+              numberOfLines={1}
+            >
+              {getGreeting()}, {firstName(profile.fullName)}
+            </Text>
+          </View>
+          <NotifBell
+            unread={unreadCount}
+            onPress={() => router.push("/(app)/notifications")}
+          />
+        </View>
+
+        {/* ── 2. Hero: the semester at a glance (FPT orange field) ── */}
+        <View className="px-5 pt-4">
+          <View
+            className="overflow-hidden rounded-[28px] p-5"
+            style={{ backgroundColor: ORANGE }}
+          >
+            {/* decorative rings — flat white at low opacity, no gradient */}
+            <View
+              pointerEvents="none"
+              className="absolute -right-16 -top-20 h-52 w-52 rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+            />
+            <View
+              pointerEvents="none"
+              className="absolute -bottom-24 -left-10 h-56 w-56 rounded-full"
+              style={{ backgroundColor: "rgba(0,0,0,0.08)" }}
+            />
+            <View
+              pointerEvents="none"
+              className="absolute right-10 top-24 h-16 w-16 rounded-full border-2"
+              style={{ borderColor: "rgba(255,255,255,0.35)" }}
+            />
+
+            <View className="flex-row items-center gap-2">
               <View
-                className="h-12 w-12 items-center justify-center rounded-full"
-                style={{ backgroundColor: ORANGE }}
+                className="rounded-full px-3 py-1.5"
+                style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
               >
-                <Text className="text-base font-bold text-white">
-                  {initials(profile.user.full_name)}
+                <Text className="text-[11px] font-bold text-white">
+                  Semester {profile.currentSemester ?? "—"} · {profile.cohort ?? "—"}
                 </Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">
-                  {todayVi()}
+              <View
+                className="rounded-full px-3 py-1.5"
+                style={{ backgroundColor: gpaRank(gpa).bg }}
+              >
+                <Text className="text-[11px] font-bold text-white">
+                  {gpaRank(gpa).label}
+                </Text>
+              </View>
+            </View>
+
+            <View className="mt-4 flex-row items-end justify-between">
+              <View>
+                <Text
+                  className="text-xs font-medium"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
+                  Cumulative GPA
+                </Text>
+                <View className="flex-row items-baseline gap-1">
+                  <Text className="text-[52px] font-bold leading-[56px] text-white tabular-nums">
+                    {gpa != null ? gpa.toFixed(2) : "—"}
+                  </Text>
+                  <Text
+                    className="text-base font-medium"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    / 10
+                  </Text>
+                </View>
+              </View>
+              <View className="items-end pb-1">
+                <Text className="text-2xl font-bold text-white tabular-nums">
+                  {stats.earned}
+                  <Text
+                    className="text-sm font-medium"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    /{stats.total}
+                  </Text>
                 </Text>
                 <Text
-                  accessibilityRole="header"
-                  className="text-[17px] font-bold text-ink dark:text-ink-dark"
-                  numberOfLines={1}
+                  className="text-[11px] font-medium"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
                 >
-                  {getGreeting()}, {firstName(profile.user.full_name)}
+                  credits earned
                 </Text>
               </View>
-              <NotifBell
-                unread={notifications.filter((n) => !n.read_at).length}
-                onPress={() => router.push("/(app)/notifications")}
+            </View>
+
+            {/* credit track */}
+            <View
+              className="mt-3 h-2.5 w-full overflow-hidden rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
+            >
+              <View
+                className="h-full rounded-full bg-white"
+                style={{ width: `${stats.pct}%` }}
               />
             </View>
-
-            {/* ── 2. Hero: the semester at a glance (FPT orange field) ── */}
-            <View className="px-5 pt-4">
-              <View
-                className="overflow-hidden rounded-[28px] p-5"
-                style={{ backgroundColor: ORANGE }}
+            <View className="mt-2 flex-row items-center justify-between">
+              <Text
+                className="text-[11px] font-medium"
+                style={{ color: "rgba(255,255,255,0.9)" }}
               >
-                {/* decorative rings — flat white at low opacity, no gradient */}
-                <View
-                  pointerEvents="none"
-                  className="absolute -right-16 -top-20 h-52 w-52 rounded-full"
-                  style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-                />
-                <View
-                  pointerEvents="none"
-                  className="absolute -bottom-24 -left-10 h-56 w-56 rounded-full"
-                  style={{ backgroundColor: "rgba(0,0,0,0.08)" }}
-                />
-                <View
-                  pointerEvents="none"
-                  className="absolute right-10 top-24 h-16 w-16 rounded-full border-2"
-                  style={{ borderColor: "rgba(255,255,255,0.35)" }}
-                />
-
-                <View className="flex-row items-center gap-2">
-                  <View
-                    className="rounded-full px-3 py-1.5"
-                    style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
-                  >
-                    <Text className="text-[11px] font-bold text-white">
-                      Kỳ {profile.student.current_semester} ·{" "}
-                      {profile.curriculum_version.version}
-                    </Text>
-                  </View>
-                  <View
-                    className="rounded-full px-3 py-1.5"
-                    style={{
-                      backgroundColor: gpaRank(profile.student.current_gpa)
-                        .bg,
-                    }}
-                  >
-                    <Text className="text-[11px] font-bold text-white">
-                      {gpaRank(profile.student.current_gpa).label}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="mt-4 flex-row items-end justify-between">
-                  <View>
-                    <Text
-                      className="text-xs font-medium"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
-                      GPA tích lũy
-                    </Text>
-                    <View className="flex-row items-baseline gap-1">
-                      <Text className="text-[52px] font-bold leading-[56px] text-white tabular-nums">
-                        {profile.student.current_gpa.toFixed(2)}
-                      </Text>
-                      <Text
-                        className="text-base font-medium"
-                        style={{ color: "rgba(255,255,255,0.8)" }}
-                      >
-                        / 10
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="items-end pb-1">
-                    <Text
-                      className="text-2xl font-bold text-white tabular-nums"
-                    >
-                      {stats.earned}
-                      <Text
-                        className="text-sm font-medium"
-                        style={{ color: "rgba(255,255,255,0.8)" }}
-                      >
-                        /{stats.total}
-                      </Text>
-                    </Text>
-                    <Text
-                      className="text-[11px] font-medium"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
-                      tín chỉ đã tích lũy
-                    </Text>
-                  </View>
-                </View>
-
-                {/* credit track */}
-                <View
-                  className="mt-3 h-2.5 w-full overflow-hidden rounded-full"
-                  style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
-                >
-                  <View
-                    className="h-full rounded-full bg-white"
-                    style={{ width: `${stats.pct}%` }}
-                  />
-                </View>
-                <View className="mt-2 flex-row items-center justify-between">
-                  <Text
-                    className="text-[11px] font-medium"
-                    style={{ color: "rgba(255,255,255,0.9)" }}
-                  >
-                    Hoàn thành {stats.pct}% · còn {stats.left} tín chỉ
-                  </Text>
-                  <Text
-                    className="text-[11px] font-medium"
-                    style={{ color: "rgba(255,255,255,0.9)" }}
-                  >
-                    {profile.student.student_code}
-                  </Text>
-                </View>
-
-                <Pressable
-                  onPress={() => router.push("/(app)/curriculum")}
-                  accessibilityRole="button"
-                  className="mt-4 flex-row items-center justify-center gap-2 rounded-2xl bg-white py-3.5 active:opacity-90"
-                >
-                  <MaterialCommunityIcons
-                    name="book-open-page-variant"
-                    size={17}
-                    color={ORANGE_DEEP}
-                  />
-                  <Text
-                    className="text-sm font-bold"
-                    style={{ color: ORANGE_DEEP }}
-                  >
-                    Xem chương trình khung
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* ── 2b. AI assistant — the core feature, one tap away ─── */}
-            <View className="px-5 pt-4">
-              <View
-                className="overflow-hidden rounded-[28px] border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
+                {stats.pct}% completed · {stats.left} credits left
+              </Text>
+              <Text
+                className="text-[11px] font-medium"
+                style={{ color: "rgba(255,255,255,0.9)" }}
               >
-                <View className="flex-row items-center gap-3 px-4 py-3.5">
-                  <View
-                    className="h-10 w-10 items-center justify-center rounded-2xl"
-                    style={{ backgroundColor: ORANGE }}
-                  >
-                    <MaterialCommunityIcons
-                      name="creation"
-                      size={20}
-                      color="#fff"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-                      Trợ lý học tập AI
-                    </Text>
-                    <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
-                      Trả lời theo chương trình K19 · có dẫn nguồn
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row border-t border-rule dark:border-rule-dark">
-                  <Pressable
-                    onPress={() => router.push("/(app)/ai-chat")}
-                    accessibilityRole="button"
-                    accessibilityLabel="Hỏi trợ lý học tập AI"
-                    className="flex-1 flex-row items-center justify-center gap-2 py-3.5 active:opacity-70"
-                  >
-                    <MaterialCommunityIcons
-                      name="message-text-outline"
-                      size={17}
-                      color={ORANGE}
-                    />
-                    <Text
-                      className="text-[13px] font-bold"
-                      style={{ color: ORANGE }}
-                    >
-                      Hỏi AI
-                    </Text>
-                  </Pressable>
-                  <View className="w-px bg-rule dark:bg-rule-dark" />
-                  <Pressable
-                    onPress={() => router.push("/(app)/ai-roadmap")}
-                    accessibilityRole="button"
-                    accessibilityLabel="Xem lộ trình học tập AI"
-                    className="flex-1 flex-row items-center justify-center gap-2 py-3.5 active:opacity-70"
-                  >
-                    <MaterialCommunityIcons
-                      name="map-marker-path"
-                      size={17}
-                      color={ORANGE}
-                    />
-                    <Text
-                      className="text-[13px] font-bold"
-                      style={{ color: ORANGE }}
-                    >
-                      Lộ trình AI
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-
-            {/* ── 3. KPI strip: one card, hairline dividers (no icon tiles) ─ */}
-            <View className="px-5 pt-4">
-              <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-                <View className="flex-1 items-center py-4">
-                  <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                    Học kỳ
-                  </Text>
-                  <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                    {profile.student.current_semester}/8
-                  </Text>
-                </View>
-                <View className="w-px bg-line dark:bg-line-dark" />
-                <View className="flex-1 items-center py-4">
-                  <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                    Chuyên ngành
-                  </Text>
-                  <Text
-                    className="mt-1 text-[13px] font-bold text-ink dark:text-ink-dark"
-                    numberOfLines={1}
-                  >
-                    {profile.major.code} · {profile.major.name.split(" ")[0]}
-                  </Text>
-                </View>
-                <View className="w-px bg-line dark:bg-line-dark" />
-                <View className="flex-1 items-center py-4">
-                  <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                    Trạng thái
-                  </Text>
-                  <View className="mt-1.5 flex-row items-center gap-1.5">
-                    <View
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: "#059669" }}
-                    />
-                    <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
-                      Đang học
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* ── 4. Specialization nudge (only when unset) ───────────── */}
-            {!profile.specialization && (
-              <View className="px-5 pt-4">
-                <View className="flex-row items-center gap-3 rounded-3xl border border-line bg-brand-tint p-4 dark:border-line-dark dark:bg-brand-tint-dark">
-                  <View
-                    className="h-11 w-11 items-center justify-center rounded-2xl"
-                    style={{ backgroundColor: ORANGE }}
-                  >
-                    <MaterialCommunityIcons
-                      name="compass-outline"
-                      size={22}
-                      color="#fff"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-                      Chọn chuyên ngành hẹp
-                    </Text>
-                    <Text className="mt-0.5 text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
-                      AI, Cloud, Data… để advisor & gợi ý môn chuẩn hơn.
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => router.push("/(app)/profile")}
-                    hitSlop={10}
-                    className="rounded-full px-3.5 py-2.5 active:opacity-80"
-                    style={{ backgroundColor: ORANGE }}
-                  >
-                    <Text className="text-xs font-bold text-white">Chọn</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-
-            {/* ── 5. Quick access — 2 × 2, flat cards, one orange ─────── */}
-            <View className="px-5 pt-6">
-              <SectionTitle
-                title="Truy cập nhanh"
-                action="Tất cả"
-                onPress={() => router.push("/(app)/courses")}
-              />
-              <View className="mt-3 flex-row gap-3">
-                <QuickCard
-                  icon="magnify"
-                  title="Tra cứu môn"
-                  desc="Mã, tên, tiên quyết"
-                  onPress={() => router.push("/(app)/courses")}
-                  featured
-                />
-                <QuickCard
-                  icon="school-outline"
-                  title="Lộ trình 8 kỳ"
-                  desc={`${stats.pct}% đã xong`}
-                  onPress={() => router.push("/(app)/curriculum")}
-                />
-              </View>
-              <View className="mt-3 flex-row gap-3">
-                <QuickCard
-                  icon="account-outline"
-                  title="Hồ sơ & CN"
-                  desc={profile.specialization?.name ?? "Chưa chọn CN"}
-                  onPress={() => router.push("/(app)/profile")}
-                />
-                <QuickCard
-                  icon="calendar-clock"
-                  title="Đặt lịch hẹn"
-                  desc={profile.advisor ? "Gặp advisor 1-1" : "Chưa phân công"}
-                  onPress={() => router.push("/(app)/appointments")}
-                />
-              </View>
-
-              {/* The student's own editable plan — the one destination that
-                  only exists for them, so it gets its own full-width card
-                  instead of a third tile in the grid. */}
-              <Pressable
-                onPress={() => router.push("/(app)/study-plan")}
-                accessibilityRole="button"
-                accessibilityLabel="Mở kế hoạch học tập của tôi"
-                className="mt-3 flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
-              >
-                <View
-                  className="h-11 w-11 items-center justify-center rounded-2xl"
-                  style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
-                >
-                  <MaterialCommunityIcons
-                    name="clipboard-text-clock-outline"
-                    size={22}
-                    color={isDark ? "#FFA371" : ORANGE}
-                  />
-                </View>
-
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-                    Kế hoạch học tập của tôi
-                  </Text>
-                  <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
-                    Sửa lộ trình từng kỳ · thêm hoặc bỏ môn
-                  </Text>
-                </View>
-
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={22}
-                  color={isDark ? "#A79C93" : "#8B8178"}
-                />
-              </Pressable>
-
-              {/* Transcript — the official record behind the hero numbers. */}
-              <Pressable
-                onPress={() => router.push("/(app)/transcript")}
-                accessibilityRole="button"
-                accessibilityLabel="Mở bảng điểm và tiến độ học tập"
-                className="mt-3 flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
-              >
-                <View
-                  className="h-11 w-11 items-center justify-center rounded-2xl"
-                  style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
-                >
-                  <MaterialCommunityIcons
-                    name="file-document-outline"
-                    size={22}
-                    color={isDark ? "#FFA371" : ORANGE}
-                  />
-                </View>
-
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-                    Bảng điểm & tiến độ
-                  </Text>
-                  <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
-                    {profile.student.current_gpa.toFixed(2)} GPA · {stats.earned}/{stats.total} tín chỉ · OJT
-                  </Text>
-                </View>
-
-                {profile.student.academic_status === "PROBATION" ? (
-                  <View
-                    className="rounded-full px-2.5 py-1"
-                    style={{ backgroundColor: isDark ? "#3A2A0A" : "#FEF3C7" }}
-                  >
-                    <Text
-                      className="text-[10px] font-bold"
-                      style={{ color: isDark ? "#FCD34D" : "#92400E" }}
-                    >
-                      Cảnh báo
-                    </Text>
-                  </View>
-                ) : null}
-
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={22}
-                  color={isDark ? "#A79C93" : "#8B8178"}
-                />
-              </Pressable>
-            </View>
-
-            {/* ── 6. Advisor — the human behind the plan ──────────────── */}
-            <View className="px-5 pt-6">
-              <SectionTitle title="Advisor của bạn" />
-              <View className="mt-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
-                {profile.advisor ? (
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className="items-center justify-center rounded-full"
-                      style={{
-                        width: 52,
-                        height: 52,
-                        backgroundColor: "#FFE5D4",
-                      }}
-                    >
-                      <Text
-                        className="text-lg font-bold"
-                        style={{ color: ORANGE_DEEP }}
-                      >
-                        {initials(profile.advisor.user.full_name)}
-                      </Text>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-                        {profile.advisor.user.full_name}
-                      </Text>
-                      <Text
-                        className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark"
-                        numberOfLines={1}
-                      >
-                        {profile.advisor.user.email}
-                      </Text>
-                      <View className="mt-1.5 self-start rounded-full bg-raised px-2.5 py-1 dark:bg-raised-dark">
-                        <Text className="text-[11px] font-semibold text-ink-muted dark:text-ink-muted-dark">
-                          Nhóm {profile.advisor.assignment.group_name ?? "—"}
-                        </Text>
-                      </View>
-                    </View>
-                    <Pressable
-                      onPress={() => router.push("/(app)/advising")}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Chat với ${profile.advisor.user.full_name}`}
-                      className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
-                      style={{ backgroundColor: ORANGE }}
-                    >
-                      <MaterialCommunityIcons
-                        name="chat-outline"
-                        size={20}
-                        color="#fff"
-                      />
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Text className="text-sm text-ink-muted dark:text-ink-muted-dark">
-                    Bạn chưa được phân công advisor. Liên hệ Phòng Đào tạo để
-                    được hỗ trợ.
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {/* ── 7. Reminders — latest notifications ─────────────────── */}
-            {notifications.length > 0 && (
-              <View className="px-5 pt-6">
-                <SectionTitle
-                  title="Nhắc việc"
-                  action={`${
-                    notifications.filter((n) => !n.read_at).length
-                  } mới`}
-                />
-                <View className="mt-3 overflow-hidden rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-                  {notifications.slice(0, 3).map((n, i) => (
-                    <View key={n.id}>
-                      <View className="flex-row items-start gap-3 p-4">
-                        <View
-                          className="mt-1.5 h-2.5 w-2.5 rounded-full"
-                          style={{
-                            backgroundColor: KIND_DOT[n.kind] ?? "#9CA3AF",
-                          }}
-                        />
-                        <View className="flex-1">
-                          <View className="flex-row items-center justify-between gap-2">
-                            <Text className="flex-1 text-sm font-bold text-ink dark:text-ink-dark">
-                              {n.title}
-                            </Text>
-                            {!n.read_at && (
-                              <View
-                                className="rounded-full px-2 py-0.5"
-                                style={{ backgroundColor: "#FFF1E7" }}
-                              >
-                                <Text
-                                  className="text-[10px] font-bold"
-                                  style={{ color: ORANGE_DEEP }}
-                                >
-                                  MỚI
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                          <Text
-                            className="mt-1 text-[13px] leading-5 text-ink-muted dark:text-ink-muted-dark"
-                            numberOfLines={2}
-                          >
-                            {n.body}
-                          </Text>
-                          <Text className="mt-1.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
-                            {KIND_LABEL[n.kind] ?? n.kind} ·{" "}
-                            {timeAgo(n.created_at)}
-                          </Text>
-                        </View>
-                      </View>
-                      {i < Math.min(2, notifications.length - 1) && (
-                        <View className="ml-[30px] h-px bg-rule dark:bg-rule-dark" />
-                      )}
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* ── 8. Suggested next courses ──────────────────────────── */}
-            {recommended.length > 0 && (
-              <View className="pt-6">
-                <View className="px-5">
-                  <SectionTitle
-                    title="Gợi ý kỳ tới"
-                    action="Tra cứu"
-                    onPress={() => router.push("/(app)/courses")}
-                  />
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{
-                    paddingHorizontal: 20,
-                    paddingTop: 12,
-                    gap: 12,
-                  }}
-                >
-                  {recommended.slice(0, 6).map((c) => (
-                    <Pressable
-                      key={c.id}
-                      onPress={() => router.push("/(app)/courses")}
-                      className="w-[200px] rounded-3xl border border-line bg-surface p-4 active:opacity-90 dark:border-line-dark dark:bg-surface-dark"
-                    >
-                      <View className="flex-row items-center justify-between">
-                        <Text
-                          className="text-[11px] font-bold tracking-wide"
-                          style={{ color: ORANGE_DEEP }}
-                        >
-                          {c.code}
-                        </Text>
-                        <View className="rounded-full bg-raised px-2 py-0.5 dark:bg-raised-dark">
-                          <Text className="text-[10px] font-bold text-ink-muted dark:text-ink-muted-dark">
-                            {c.credits} TC
-                          </Text>
-                        </View>
-                      </View>
-                      <Text
-                        className="mt-2 min-h-[40px] text-sm font-bold leading-5 text-ink dark:text-ink-dark"
-                        numberOfLines={2}
-                      >
-                        {c.name}
-                      </Text>
-                      <View className="mt-3 flex-row items-center gap-1">
-                        <MaterialCommunityIcons
-                          name="arrow-right"
-                          size={14}
-                          color={ORANGE}
-                        />
-                        <Text
-                          className="text-xs font-semibold"
-                          style={{ color: ORANGE }}
-                        >
-                          Xem chi tiết
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* ── 9. Study meta ──────────────────────────────────────── */}
-            <View className="mx-5 mt-6 rounded-3xl bg-raised p-4 dark:bg-raised-dark">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xs font-semibold text-ink-muted dark:text-ink-muted-dark">
-                  {profile.major.name}
-                </Text>
-                <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">
-                  {profile.curriculum_version.name}
-                </Text>
-              </View>
-              <View className="mt-3">
-                <Progress value={stats.pct} color="primary" />
-              </View>
-              <Text className="mt-2 text-center text-[11px] text-ink-faint dark:text-ink-faint-dark">
-                FAAPS · FPT University HCMC — đồng hành cùng bạn tới tốt
-                nghiệp
+                {profile.studentCode ?? "—"}
               </Text>
             </View>
-          </>
-        )}
+
+            <Pressable
+              onPress={() => router.push("/(app)/(tabs)/curriculum")}
+              accessibilityRole="button"
+              accessibilityLabel="View the curriculum"
+              className="mt-4 flex-row items-center justify-center gap-2 rounded-2xl bg-white py-3.5 active:opacity-90"
+            >
+              <MaterialCommunityIcons
+                name="book-open-page-variant"
+                size={17}
+                color={ORANGE_DEEP}
+              />
+              <Text className="text-sm font-bold" style={{ color: ORANGE_DEEP }}>
+                View curriculum
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* ── 2b. AI assistant — the core feature, one tap away ─── */}
+        <View className="px-5 pt-4">
+          <View
+            className="overflow-hidden rounded-[28px] border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
+          >
+            <View className="flex-row items-center gap-3 px-4 py-3.5">
+              <View
+                className="h-10 w-10 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: ORANGE }}
+              >
+                <MaterialCommunityIcons name="creation" size={20} color="#fff" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-ink dark:text-ink-dark">
+                  AI Academic Assistant
+                </Text>
+                <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
+                  Answers grounded in your curriculum · with citations
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row border-t border-rule dark:border-rule-dark">
+              <Pressable
+                onPress={() => router.push("/(app)/ai-chat")}
+                accessibilityRole="button"
+                accessibilityLabel="Ask the AI academic assistant"
+                className="flex-1 flex-row items-center justify-center gap-2 py-3.5 active:opacity-70"
+              >
+                <MaterialCommunityIcons
+                  name="message-text-outline"
+                  size={17}
+                  color={ORANGE}
+                />
+                <Text
+                  className="text-[13px] font-bold"
+                  style={{ color: ORANGE }}
+                >
+                  Ask AI
+                </Text>
+              </Pressable>
+              <View className="w-px bg-rule dark:bg-rule-dark" />
+              <Pressable
+                onPress={() => router.push("/(app)/ai-roadmap")}
+                accessibilityRole="button"
+                accessibilityLabel="View the AI study roadmap"
+                className="flex-1 flex-row items-center justify-center gap-2 py-3.5 active:opacity-70"
+              >
+                <MaterialCommunityIcons
+                  name="map-marker-path"
+                  size={17}
+                  color={ORANGE}
+                />
+                <Text
+                  className="text-[13px] font-bold"
+                  style={{ color: ORANGE }}
+                >
+                  AI Roadmap
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 3. KPI strip: one card, hairline dividers (no icon tiles) ─ */}
+        <View className="px-5 pt-4">
+          <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
+            <View className="flex-1 items-center py-4">
+              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
+                Semester
+              </Text>
+              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
+                {profile.currentSemester ?? "—"}
+              </Text>
+            </View>
+            <View className="w-px bg-line dark:bg-line-dark" />
+            <View className="flex-1 items-center py-4">
+              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
+                Major
+              </Text>
+              <Text
+                className="mt-1 text-[13px] font-bold text-ink dark:text-ink-dark"
+                numberOfLines={1}
+              >
+                {profile.majorCode ?? "—"}
+              </Text>
+            </View>
+            <View className="w-px bg-line dark:bg-line-dark" />
+            <View className="flex-1 items-center py-4">
+              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
+                Status
+              </Text>
+              <View className="mt-1.5 flex-row items-center gap-1.5">
+                <View
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: "#059669" }}
+                />
+                <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
+                  {profile.academicStatus ?? "ACTIVE"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 4. Quick access — 2 × 2, flat cards, one orange ─────── */}
+        <View className="px-5 pt-6">
+          <SectionTitle
+            title="Quick access"
+            action="All"
+            onPress={() => router.push("/(app)/(tabs)/courses")}
+          />
+          <View className="mt-3 flex-row gap-3">
+            <QuickCard
+              icon="magnify"
+              title="Course catalog"
+              desc="Code, name, prerequisites"
+              onPress={() => router.push("/(app)/(tabs)/courses")}
+              featured
+            />
+            <QuickCard
+              icon="school-outline"
+              title="Curriculum"
+              desc={`${stats.pct}% completed`}
+              onPress={() => router.push("/(app)/(tabs)/curriculum")}
+            />
+          </View>
+          <View className="mt-3 flex-row gap-3">
+            <QuickCard
+              icon="account-outline"
+              title="Profile"
+              desc={profile.majorName ?? "Student profile"}
+              onPress={() => router.push("/(app)/(tabs)/profile")}
+            />
+            <QuickCard
+              icon="calendar-clock"
+              title="Book a session"
+              desc={advisor ? "Meet your advisor" : "No advisor yet"}
+              onPress={() => router.push("/(app)/appointments")}
+            />
+          </View>
+
+          {/* The student's own editable plan — the one destination that
+              only exists for them, so it gets its own full-width card
+              instead of a third tile in the grid. */}
+          <Pressable
+            onPress={() => router.push("/(app)/study-plan")}
+            accessibilityRole="button"
+            accessibilityLabel="Open my study plan"
+            className="mt-3 flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
+          >
+            <View
+              className="h-11 w-11 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+            >
+              <MaterialCommunityIcons
+                name="clipboard-text-clock-outline"
+                size={22}
+                color={isDark ? "#FFA371" : ORANGE}
+              />
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-ink dark:text-ink-dark">
+                My study plan
+              </Text>
+              <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
+                Edit your semester plan · add or remove courses
+              </Text>
+            </View>
+
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={22}
+              color={isDark ? "#A79C93" : "#8B8178"}
+            />
+          </Pressable>
+
+          {/* Transcript — the official record behind the hero numbers. */}
+          <Pressable
+            onPress={() => router.push("/(app)/transcript")}
+            accessibilityRole="button"
+            accessibilityLabel="Open transcript and academic progress"
+            className="mt-3 flex-row items-center gap-3 rounded-3xl border border-line bg-surface p-4 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
+          >
+            <View
+              className="h-11 w-11 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+            >
+              <MaterialCommunityIcons
+                name="file-document-outline"
+                size={22}
+                color={isDark ? "#FFA371" : ORANGE}
+              />
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-ink dark:text-ink-dark">
+                Transcript & progress
+              </Text>
+              <Text className="mt-0.5 text-[11px] leading-4 text-ink-muted dark:text-ink-muted-dark">
+                {gpa != null ? `${gpa.toFixed(2)} GPA` : "No GPA yet"} ·{" "}
+                {stats.earned}/{stats.total} credits
+              </Text>
+            </View>
+
+            {profile.academicStatus === "PROBATION" ? (
+              <View
+                className="rounded-full px-2.5 py-1"
+                style={{ backgroundColor: isDark ? "#3A2A0A" : "#FEF3C7" }}
+              >
+                <Text
+                  className="text-[10px] font-bold"
+                  style={{ color: isDark ? "#FCD34D" : "#92400E" }}
+                >
+                  Warning
+                </Text>
+              </View>
+            ) : null}
+
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={22}
+              color={isDark ? "#A79C93" : "#8B8178"}
+            />
+          </Pressable>
+        </View>
+
+        {/* ── 5. Advisor — the human behind the plan ──────────────── */}
+        <View className="px-5 pt-6">
+          <SectionTitle title="Your advisor" />
+          <View className="mt-3 rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
+            {advisor ? (
+              <View className="flex-row items-center gap-3">
+                <View
+                  className="items-center justify-center rounded-full"
+                  style={{
+                    width: 52,
+                    height: 52,
+                    backgroundColor: "#FFE5D4",
+                  }}
+                >
+                  <Text
+                    className="text-lg font-bold"
+                    style={{ color: ORANGE_DEEP }}
+                  >
+                    {initials(advisor.fullName)}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
+                    {advisor.fullName}
+                  </Text>
+                  <Text
+                    className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark"
+                    numberOfLines={1}
+                  >
+                    {advisor.email}
+                  </Text>
+                  <View className="mt-1.5 self-start rounded-full bg-raised px-2.5 py-1 dark:bg-raised-dark">
+                    <Text className="text-[11px] font-semibold text-ink-muted dark:text-ink-muted-dark">
+                      {advisor.specialization ?? advisor.groupName ?? "Advisor"}
+                    </Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => router.push("/(app)/advising")}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Chat with ${advisor.fullName}`}
+                  className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
+                  style={{ backgroundColor: ORANGE }}
+                >
+                  <MaterialCommunityIcons
+                    name="chat-outline"
+                    size={20}
+                    color="#fff"
+                  />
+                </Pressable>
+              </View>
+            ) : (
+              <Text className="text-sm text-ink-muted dark:text-ink-muted-dark">
+                You have not been assigned an advisor yet. Contact the Academic
+                Office for support.
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* ── 6. Reminders — latest notifications ─────────────────── */}
+        {notifications && notifications.items.length > 0 ? (
+          <View className="px-5 pt-6">
+            <SectionTitle
+              title="Reminders"
+              action={`${unreadCount} new`}
+              onPress={() => router.push("/(app)/notifications")}
+            />
+            <View className="mt-3 overflow-hidden rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
+              {notifications.items.slice(0, 3).map((n, i) => (
+                <View key={n.id}>
+                  <View className="flex-row items-start gap-3 p-4">
+                    <View
+                      className="mt-1.5 h-2.5 w-2.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                          NOTIFICATION_DOT[n.notificationType] ?? "#9CA3AF",
+                      }}
+                    />
+                    <View className="flex-1">
+                      <View className="flex-row items-center justify-between gap-2">
+                        <Text className="flex-1 text-sm font-bold text-ink dark:text-ink-dark">
+                          {n.title}
+                        </Text>
+                        {!n.isRead ? (
+                          <View
+                            className="rounded-full px-2 py-0.5"
+                            style={{ backgroundColor: "#FFF1E7" }}
+                          >
+                            <Text
+                              className="text-[10px] font-bold"
+                              style={{ color: ORANGE_DEEP }}
+                            >
+                              NEW
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text
+                        className="mt-1 text-[13px] leading-5 text-ink-muted dark:text-ink-muted-dark"
+                        numberOfLines={2}
+                      >
+                        {n.message}
+                      </Text>
+                      <Text className="mt-1.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
+                        {NOTIFICATION_LABEL[n.notificationType] ??
+                          n.notificationType}{" "}
+                        · {timeAgo(n.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                  {i < Math.min(2, notifications.items.length - 1) && (
+                    <View className="ml-[30px] h-px bg-rule dark:bg-rule-dark" />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {/* ── 7. Course catalog preview ───────────────────────────── */}
+        {courses && courses.length > 0 ? (
+          <View className="pt-6">
+            <View className="px-5">
+              <SectionTitle
+                title="Course catalog"
+                action="Browse"
+                onPress={() => router.push("/(app)/(tabs)/courses")}
+              />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingTop: 12,
+                gap: 12,
+              }}
+            >
+              {courses.slice(0, 6).map((c) => (
+                <Pressable
+                  key={c.id}
+                  onPress={() => router.push("/(app)/(tabs)/courses")}
+                  className="w-[200px] rounded-3xl border border-line bg-surface p-4 active:opacity-90 dark:border-line-dark dark:bg-surface-dark"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text
+                      className="text-[11px] font-bold tracking-wide"
+                      style={{ color: ORANGE_DEEP }}
+                    >
+                      {c.code}
+                    </Text>
+                    <View className="rounded-full bg-raised px-2 py-0.5 dark:bg-raised-dark">
+                      <Text className="text-[10px] font-bold text-ink-muted dark:text-ink-muted-dark">
+                        {c.credits} cr
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    className="mt-2 min-h-[40px] text-sm font-bold leading-5 text-ink dark:text-ink-dark"
+                    numberOfLines={2}
+                  >
+                    {c.name}
+                  </Text>
+                  <View className="mt-3 flex-row items-center gap-1">
+                    <MaterialCommunityIcons
+                      name="arrow-right"
+                      size={14}
+                      color={ORANGE}
+                    />
+                    <Text className="text-xs font-semibold" style={{ color: ORANGE }}>
+                      View details
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {/* ── 8. Study meta ──────────────────────────────────────── */}
+        <View className="mx-5 mt-6 rounded-3xl bg-raised p-4 dark:bg-raised-dark">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs font-semibold text-ink-muted dark:text-ink-muted-dark">
+              {profile.majorName ?? "FAAPS"}
+            </Text>
+            <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">
+              {profile.cohort ?? ""}
+            </Text>
+          </View>
+          <View className="mt-3">
+            <Progress value={stats.pct} color="primary" />
+          </View>
+          <Text className="mt-2 text-center text-[11px] text-ink-faint dark:text-ink-faint-dark">
+            FAAPS · FPT University HCMC — walking with you to graduation
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -814,7 +802,7 @@ function NotifBell({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
-        unread > 0 ? `Thông báo, ${unread} chưa đọc` : "Thông báo"
+        unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
       }
       className="relative h-11 w-11 items-center justify-center rounded-full border border-line bg-surface active:opacity-70 dark:border-line-dark dark:bg-surface-dark"
     >
@@ -920,7 +908,7 @@ function QuickCard({
           className="text-[11px] font-bold"
           style={{ color: featured ? "#FFFFFF" : ORANGE }}
         >
-          Mở
+          Open
         </Text>
         <MaterialCommunityIcons
           name="chevron-right"

@@ -1,11 +1,16 @@
 /**
- * FE-S — Kế hoạch học tập (Study Plan).
+ * FE-S — Study plan.
  *
- * Câu hỏi duy nhất của màn hình: "Kỳ tới tôi học gì, và kế hoạch đã sẵn sàng gửi duyệt chưa?"
- * Layout: timeline dọc — mỗi kỳ là một mốc trên trục thời gian, thao tác bằng một tay.
+ * The screen's single question: "What am I taking next term, and is the plan
+ * ready for my advisor to review?"
+ *
+ * The backend models a plan as one semester at a time: a plan belongs to a
+ * semester, carries a version, a status and its own list of validation
+ * issues. So the screen is a term-by-term list, and the editor works on one
+ * term at a time — which matches how a student actually plans.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -21,729 +26,613 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ScreenHeader, goBack } from "@/components/ScreenHeader";
 import { Sheet, Skeleton } from "@/components/ui";
-import { useStudyPlan, useSavePlanDraft, usePublishPlan } from "@/lib/queries/planning";
-import { useRecommendedCourses } from "@/lib/queries/course";
-import { useMyProfile } from "@/lib/queries/profile";
-import { useAuthStore } from "@/stores/auth";
-import type { CoursePlan, StudyPlan } from "@/lib/api/planning";
+import { usePlanSemesters, useSaveStudyPlan, useStudyPlans, useSubmitStudyPlan } from "@/lib/queries/planning";
+import { useCurriculumCourses } from "@/modules/curriculum/hooks/useGroupedCourses";
+import { useMyAdvisor } from "@/lib/queries/profile";
+import type { CurriculumCourse, CurriculumPlan, PlanSemester } from "@/types";
 
 const ORANGE = "#F36F21";
 const ORANGE_DEEP = "#B5460D";
 
-function formatDateVi(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
-    return "";
+/** The status the backend reports for a plan the student still owns. */
+type PlanStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | string;
+
+/**
+ * A course as the editor needs it: the curriculum row when we have it,
+ * otherwise the plan's own row.
+ */
+interface CourseRow {
+  courseId: string;
+  code: string;
+  name: string;
+  credits: number;
+  semesterNumber: number;
+  mandatory: boolean;
+}
+
+function statusLabel(status: PlanStatus): string {
+  switch (status?.toUpperCase()) {
+    case "DRAFT":
+      return "Draft";
+    case "SUBMITTED":
+    case "PENDING_REVIEW":
+      return "Awaiting review";
+    case "APPROVED":
+      return "Approved";
+    case "REJECTED":
+      return "Changes requested";
+    default:
+      return "Draft";
   }
 }
 
-function avgGpa(semesters: { projected_gpa: number }[]): number {
-  if (semesters.length === 0) return 0;
-  const sum = semesters.reduce((s, x) => s + (x.projected_gpa ?? 0), 0);
-  return Math.round((sum / semesters.length) * 100) / 100;
+function statusTone(status: PlanStatus): { bg: string; fg: string } {
+  switch (status?.toUpperCase()) {
+    case "SUBMITTED":
+    case "PENDING_REVIEW":
+      return { bg: "#FFF1E7", fg: ORANGE_DEEP };
+    case "APPROVED":
+      return { bg: "#DCFCE7", fg: "#15803D" };
+    case "REJECTED":
+      return { bg: "#FEE2E2", fg: "#B91C1C" };
+    default:
+      return { bg: "#F2EDE7", fg: "#6A6058" };
+  }
 }
 
 export default function StudyPlanScreen() {
   const isDark = useColorScheme() === "dark";
-  const userId = useAuthStore((s) => s.session?.user.id ?? null);
 
   const {
-    data: serverPlan,
+    data: plans = [],
     isLoading,
     isError,
     refetch,
     isRefetching,
-  } = useStudyPlan();
-  const { data: profile } = useMyProfile(userId);
-  const { data: recommended = [] } = useRecommendedCourses();
+  } = useStudyPlans();
+  const { data: semesters = [] } = usePlanSemesters();
+  const { data: advisor } = useMyAdvisor();
+  const { data: curriculumCourses = [] } = useCurriculumCourses();
 
-  const saveDraft = useSavePlanDraft();
-  const publish = usePublishPlan();
+  const savePlan = useSaveStudyPlan();
+  const submitPlan = useSubmitStudyPlan();
 
-  // ── Local editable copy ──────────────────────────────────────────────
-  const [draft, setDraft] = useState<StudyPlan | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [addTarget, setAddTarget] = useState<string | null>(null);
+  /** The semester currently open in the editor. */
+  const [editTarget, setEditTarget] = useState<PlanSemester | null>(null);
   const [sheetQuery, setSheetQuery] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
+
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    if (serverPlan && !draft) {
-      // Initial hydration of the editable copy from the server plan.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDraft(serverPlan);
-      // Mở 2 kỳ đầu, còn lại thu gọn để timeline gọn trên màn hình nhỏ.
-      const init: Record<string, boolean> = {};
-      serverPlan.semesters.forEach((s, i) => {
-        init[s.semester_id] = i < 2;
-      });
-      setExpanded(init);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverPlan]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const t = setTimeout(() => setNotice(null), 2600);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
     return () => clearTimeout(t);
-  }, [notice]);
+  }, [toast]);
 
-  const stats = useMemo(() => {
-    if (!draft) return null;
-    const totalCredits = draft.semesters.reduce(
-      (s, sem) => s + sem.courses.reduce((a, c) => a + c.credits, 0),
-      0
-    );
-    const totalCourses = draft.semesters.reduce((s, sem) => s + sem.courses.length, 0);
-    return { totalCredits, totalCourses, avg: avgGpa(draft.semesters) };
-  }, [draft]);
+  /**
+   * The plan of a semester, if the student already has one. The backend
+   * returns the latest version of each semester's plan.
+   */
+  const planBySemester = useMemo(() => {
+    const m = new Map<string, CurriculumPlan>();
+    for (const p of plans) {
+      const key = p.header.semesterId;
+      const existing = m.get(key);
+      if (!existing || p.header.version > existing.header.version) {
+        m.set(key, p);
+      }
+    }
+    return m;
+  }, [plans]);
 
-  const dirty = useMemo(() => {
-    if (!serverPlan || !draft) return false;
-    return JSON.stringify(serverPlan) !== JSON.stringify(draft);
-  }, [serverPlan, draft]);
+  /** Terms with a plan first, then the terms without one. */
+  const orderedSemesters = useMemo(() => {
+    const withPlan = semesters.filter((s) => planBySemester.has(s.id));
+    const without = semesters.filter((s) => !planBySemester.has(s.id));
+    return [...withPlan, ...without];
+  }, [semesters, planBySemester]);
 
-  const inPlanIds = useMemo(() => {
-    const set = new Set<string>();
-    draft?.semesters.forEach((sem) =>
-      sem.courses.forEach((c) => set.add(c.course_id))
-    );
-    return set;
-  }, [draft]);
+  const totals = useMemo(() => {
+    let credits = 0;
+    let courses = 0;
+    let awaitingReview = 0;
+    for (const p of plans) {
+      credits += p.header.totalCredits ?? 0;
+      courses += p.courses.length;
+      if (["SUBMITTED", "PENDING_REVIEW"].includes(p.header.status?.toUpperCase())) {
+        awaitingReview += 1;
+      }
+    }
+    return { credits, courses, awaitingReview };
+  }, [plans]);
 
-  const candidates = useMemo(() => {
-    const q = sheetQuery.trim().toLowerCase();
-    return recommended
-      .filter((c) => !inPlanIds.has(c.id))
-      .filter((c) =>
-        q ? c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) : true
-      )
-      .slice(0, 30);
-  }, [recommended, inPlanIds, sheetQuery]);
+  const openEditor = useCallback((semester: PlanSemester) => {
+    setEditTarget(semester);
+    setSheetQuery("");
+  }, []);
 
-  // ── Mutations ────────────────────────────────────────────────────────
-  const toggle = (id: string) =>
-    setExpanded((p) => ({ ...p, [id]: !(p[id] ?? false) }));
-
-  const removeCourse = (semesterId: string, courseId: string) => {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        status: "draft",
-        semesters: prev.semesters.map((sem) =>
-          sem.semester_id === semesterId
-            ? { ...sem, courses: sem.courses.filter((c) => c.course_id !== courseId) }
-            : sem
-        ),
-      };
-    });
-  };
-
-  const addCourse = (semesterId: string, course: { id: string; code: string; name: string; credits: number }) => {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const exists = prev.semesters.some((sem) =>
-        sem.courses.some((c) => c.course_id === course.id)
-      );
-      if (exists) return prev;
-      const plan: CoursePlan = {
-        course_id: course.id,
-        course_code: course.code,
-        course_name: course.name,
-        credits: course.credits,
-        reason: "Sinh viên tự thêm vào kế hoạch",
-      };
-      return {
-        ...prev,
-        status: "draft",
-        semesters: prev.semesters.map((sem) =>
-          sem.semester_id === semesterId
-            ? { ...sem, courses: [...sem.courses, plan] }
-            : sem
-        ),
-      };
-    });
-    setNotice(`Đã thêm ${course.code} vào kế hoạch`);
-  };
-
-  const handleSave = () => {
-    if (!draft || saveDraft.isPending) return;
-    saveDraft.mutate(draft, {
-      onSuccess: (data) => {
-        if (data) setDraft(data);
-        setNotice("Đã lưu bản nháp");
-      },
-      onError: () => setNotice("Lưu nháp thất bại, thử lại sau"),
-    });
-  };
-
-  const handleSubmit = () => {
-    if (!draft || publish.isPending) return;
-    const doPublish = () => {
-      // Đảm bảo bản nháp mới nhất được lưu trước khi gửi duyệt (mock vẫn giữ status).
-      const payload: StudyPlan = { ...draft, status: "draft" };
-      saveDraft.mutate(payload, {
-        onSuccess: (saved) => {
-          const planId = saved?.id ?? draft.id;
-          publish.mutate(planId, {
-            onSuccess: (data) => {
-              if (data) setDraft({ ...data, status: "published" });
-              else
-                setDraft((p) => (p ? { ...p, status: "published" } : p));
-              setNotice("Đã gửi kế hoạch cho cố vấn duyệt");
-            },
-            onError: () => setNotice("Gửi duyệt thất bại, thử lại sau"),
-          });
-        },
-        onError: () => setNotice("Gửi duyệt thất bại, thử lại sau"),
+  const handleSubmit = useCallback(
+    (plan: CurriculumPlan) => {
+      if (submitPlan.isPending) return;
+      submitPlan.mutate(plan.header.id, {
+        onSuccess: () => setToast("Plan sent to your advisor for review"),
+        onError: () => setToast("Could not send the plan. Please try again."),
       });
-    };
-    doPublish();
-  };
+    },
+    [submitPlan],
+  );
 
-  // ── States ───────────────────────────────────────────────────────────
-  if (isLoading || !draft || !stats) {
+  /* ── Loading ─────────────────────────────────────────────────────── */
+  if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <ScreenHeader
-          title="Kế hoạch học tập"
-          subtitle="Lộ trình các kỳ và môn học"
-          onBack={goBack}
-        />
+        <ScreenHeader title="Study plan" subtitle="Your terms and courses" onBack={goBack} />
         <PlanSkeleton />
       </SafeAreaView>
     );
   }
 
-  if (isError || !draft) {
+  /* ── Error ───────────────────────────────────────────────────────── */
+  if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <ScreenHeader title="Kế hoạch học tập" subtitle="Lộ trình các kỳ và môn học" onBack={goBack} />
+        <ScreenHeader title="Study plan" subtitle="Your terms and courses" onBack={goBack} />
         <View className="flex-1 items-center justify-center px-8">
           <MaterialCommunityIcons name="cloud-off-outline" size={44} color="#CBD5E1" />
           <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-            Không tải được kế hoạch học tập. Kéo xuống để thử lại.
+            Could not load your study plan. Pull down to try again.
           </Text>
           <Pressable
             onPress={() => refetch()}
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
             className="mt-4 rounded-full px-6 py-3 active:opacity-80"
             style={{ backgroundColor: ORANGE }}
           >
-            <Text className="text-sm font-bold text-white">Thử lại</Text>
+            <Text className="text-sm font-bold text-white">Try again</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const isPublished = draft.status === "published";
-  const advisorName = profile?.advisor?.user.full_name ?? "Cố vấn học tập";
+  const advisorName = advisor?.fullName ?? "Your advisor";
 
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
-        title="Kế hoạch học tập"
-        subtitle={`${stats.totalCourses} môn · ${stats.totalCredits} tín chỉ · Cập nhật ${formatDateVi(draft.generated_at)}`}
+        title="Study plan"
+        subtitle={`${totals.courses} courses · ${totals.credits} credits planned`}
         onBack={goBack}
         right={
-          <View
-            className="rounded-full px-3 py-1.5"
-            style={{ backgroundColor: isPublished ? "#DCFCE7" : "#FFF1E7" }}
-          >
-            <Text
-              className="text-[11px] font-bold"
-              style={{ color: isPublished ? "#15803D" : ORANGE_DEEP }}
-            >
-              {isPublished ? "Đã gửi duyệt" : dirty ? "Nháp · chưa lưu" : "Bản nháp"}
-            </Text>
-          </View>
+          totals.awaitingReview > 0 ? (
+            <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: "#FFF1E7" }}>
+              <Text className="text-[11px] font-bold" style={{ color: ORANGE_DEEP }}>
+                {totals.awaitingReview} in review
+              </Text>
+            </View>
+          ) : undefined
         }
       />
 
-      <View className="flex-1">
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 150 }}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={ORANGE} />
-          }
-        >
-          {/* ── Hero: toàn cảnh kế hoạch (flat orange, no gradient) ── */}
-          <View className="px-5 pt-4">
-            <View
-              className="overflow-hidden rounded-[28px] p-5"
-              style={{ backgroundColor: ORANGE }}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => {
+              refetch();
+            }}
+            tintColor={ORANGE}
+          />
+        }
+      >
+        {/* ── Summary strip: three numbers, one divided card ───────── */}
+        <View className="px-5 pt-4">
+          <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
+            <View className="flex-1 items-center py-4">
+              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
+                Terms
+              </Text>
+              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
+                {semesters.length}
+              </Text>
+            </View>
+            <View className="w-px bg-line dark:bg-line-dark" />
+            <View className="flex-1 items-center py-4">
+              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
+                Credits
+              </Text>
+              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
+                {totals.credits}
+              </Text>
+            </View>
+            <View className="w-px bg-line dark:bg-line-dark" />
+            <View className="flex-1 items-center py-4">
+              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
+                Awaiting review
+              </Text>
+              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
+                {totals.awaitingReview}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── The terms ─────────────────────────────────────────────── */}
+        <View className="px-5 pt-6">
+          <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
+            Your terms
+          </Text>
+          <Text className="mt-0.5 text-[12px] text-ink-muted dark:text-ink-muted-dark">
+            Tap a term to plan its courses
+          </Text>
+
+          {orderedSemesters.length === 0 ? (
+            <View className="mt-4 items-center rounded-3xl border border-dashed px-6 py-10"
+              style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
             >
-              <View
-                pointerEvents="none"
-                className="absolute -right-14 -top-16 h-48 w-48 rounded-full"
-                style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-              />
-              <View
-                pointerEvents="none"
-                className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full"
-                style={{ backgroundColor: "rgba(0,0,0,0.08)" }}
-              />
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="rounded-full px-3 py-1.5"
-                  style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
-                >
-                  <Text className="text-[11px] font-bold text-white">
-                    {draft.semesters.length} kỳ học
-                  </Text>
-                </View>
-                <View
-                  className="rounded-full px-3 py-1.5"
-                  style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
-                >
-                  <Text className="text-[11px] font-bold text-white">
-                    GPA dự kiến {stats.avg.toFixed(2)}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="mt-4 flex-row items-end justify-between">
-                <View>
-                  <Text className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-                    Tổng khối lượng
-                  </Text>
-                  <View className="flex-row items-baseline gap-1">
-                    <Text className="text-[44px] font-bold leading-[48px] text-white tabular-nums">
-                      {stats.totalCredits}
-                    </Text>
-                    <Text className="text-base font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
-                      tín chỉ
-                    </Text>
-                  </View>
-                </View>
-                <View className="items-end pb-1">
-                  <Text className="text-2xl font-bold text-white tabular-nums">
-                    {stats.totalCourses}
-                  </Text>
-                  <Text className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-                    môn trong lộ trình
-                  </Text>
-                </View>
-              </View>
-
-              <View
-                className="mt-3 h-2.5 w-full overflow-hidden rounded-full"
-                style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
-              >
-                <View
-                  className="h-full rounded-full bg-white"
-                  style={{ width: `${Math.min(100, Math.round((stats.totalCredits / 150) * 100))}%` }}
-                />
-              </View>
-              <Text
-                className="mt-2 text-[11px] font-medium"
-                style={{ color: "rgba(255,255,255,0.9)" }}
-              >
-                {Math.min(100, Math.round((stats.totalCredits / 150) * 100))}% chương trình SE 150 tín chỉ
-                {"  ·  "}Người duyệt: {advisorName}
+              <MaterialCommunityIcons name="calendar-blank-outline" size={38} color="#CBD5E1" />
+              <Text className="mt-3 text-center text-[13px] text-ink-muted dark:text-ink-muted-dark">
+                No semesters have been published yet. Check back once the
+                registrar opens term registration.
               </Text>
             </View>
-          </View>
-
-          {/* ── KPI strip: một card chia 3 ô bằng hairline ── */}
-          <View className="px-5 pt-4">
-            <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-              <View className="flex-1 items-center py-4">
-                <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                  Số kỳ
-                </Text>
-                <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                  {draft.semesters.length}
-                </Text>
-              </View>
-              <View className="w-px bg-line dark:bg-line-dark" />
-              <View className="flex-1 items-center py-4">
-                <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                  Tín chỉ TB/kỳ
-                </Text>
-                <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                  {draft.semesters.length
-                    ? Math.round(stats.totalCredits / draft.semesters.length)
-                    : 0}
-                </Text>
-              </View>
-              <View className="w-px bg-line dark:bg-line-dark" />
-              <View className="flex-1 items-center py-4">
-                <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                  Trạng thái
-                </Text>
-                <View className="mt-1.5 flex-row items-center gap-1.5">
-                  <View
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: isPublished ? "#16A34A" : ORANGE }}
-                  />
-                  <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
-                    {isPublished ? "Đã gửi" : "Đang sửa"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* ── Timeline ── */}
-          <View className="px-5 pt-6">
-            <View className="flex-row items-end justify-between">
-              <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-                Lộ trình từng kỳ
-              </Text>
-              <Text className="text-xs font-semibold" style={{ color: ORANGE }}>
-                Chạm để mở rộng
-              </Text>
-            </View>
-
-            <View className="mt-3">
-              {draft.semesters.map((sem, idx) => (
-                <TimelineSemester
-                  key={sem.semester_id}
-                  semester={sem}
-                  index={idx}
-                  isLast={idx === draft.semesters.length - 1}
+          ) : (
+            <View className="mt-3 gap-3">
+              {orderedSemesters.map((semester) => (
+                <TermCard
+                  key={semester.id}
+                  semester={semester}
+                  plan={planBySemester.get(semester.id) ?? null}
                   isDark={isDark}
-                  open={expanded[sem.semester_id] ?? false}
-                  onToggle={() => toggle(sem.semester_id)}
-                  onRemove={(courseId) => removeCourse(sem.semester_id, courseId)}
-                  onAdd={() => {
-                    setAddTarget(sem.semester_id);
-                    setSheetQuery("");
+                  advisorName={advisorName}
+                  busy={submitPlan.isPending}
+                  onEdit={() => openEditor(semester)}
+                  onSubmit={() => {
+                    const plan = planBySemester.get(semester.id);
+                    if (plan) handleSubmit(plan);
                   }}
                 />
               ))}
             </View>
-
-            <Text className="mt-4 text-center text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-              Mẹo: giữ mỗi kỳ 14–18 tín chỉ để đảm bảo tiến độ tốt nghiệp.
-            </Text>
-          </View>
-        </ScrollView>
-
-        {/* ── Notice toast ── */}
-        {notice ? (
-          <View className="absolute left-5 right-5 top-2 items-center" pointerEvents="none">
-            <View
-              className="rounded-full px-4 py-2.5"
-              style={{ backgroundColor: isDark ? "#1B1815" : "#191512" }}
-            >
-              <Text className="text-xs font-semibold text-white">{notice}</Text>
-            </View>
-          </View>
-        ) : null}
-
-        {/* ── Sticky action bar ── */}
-        <View
-          className="absolute bottom-0 left-0 right-0 border-t border-line bg-surface px-5 pb-6 pt-3 dark:border-line-dark dark:bg-surface-dark"
-          style={{ backgroundColor: isDark ? "#1B1815" : "#FFFFFF" }}
-        >
-          <View className="flex-row gap-3">
-            <Pressable
-              onPress={handleSave}
-              disabled={!dirty || saveDraft.isPending}
-              accessibilityRole="button"
-              accessibilityLabel="Lưu bản nháp"
-              className="flex-1 items-center justify-center rounded-2xl border border-line py-4 active:opacity-70 dark:border-line-dark"
-              style={{ opacity: !dirty || saveDraft.isPending ? 0.5 : 1 }}
-            >
-              {saveDraft.isPending ? (
-                <ActivityIndicator color={ORANGE} size="small" />
-              ) : (
-                <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-                  Lưu nháp{dirty ? " •" : ""}
-                </Text>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={publish.isPending || saveDraft.isPending}
-              accessibilityRole="button"
-              accessibilityLabel="Gửi duyệt cho cố vấn"
-              className="flex-[1.4] flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-85"
-              style={{
-                backgroundColor: ORANGE,
-                opacity: publish.isPending ? 0.7 : 1,
-              }}
-            >
-              {publish.isPending ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="send" size={17} color="#fff" />
-                  <Text className="text-sm font-bold text-white">Gửi duyệt</Text>
-                </>
-              )}
-            </Pressable>
-          </View>
-          <Text className="mt-2 text-center text-[11px] text-ink-faint dark:text-ink-faint-dark">
-            Gửi tới {advisorName} · phản hồi trong 1–2 ngày làm việc
-          </Text>
+          )}
         </View>
-      </View>
 
-      {/* ── Add-course sheet ── */}
-      <Sheet open={!!addTarget} onClose={() => setAddTarget(null)} maxHeightRatio={0.85}>
-        <AddCourseSheet
-          semesterLabel={
-            draft.semesters.find((s) => s.semester_id === addTarget)?.semester_label ?? ""
-          }
-          query={sheetQuery}
-          onQuery={setSheetQuery}
-          candidates={candidates}
-          onAdd={(c) => {
-            if (addTarget) addCourse(addTarget, c);
-          }}
-          onDone={() => setAddTarget(null)}
-        />
+        <Text className="mt-6 px-5 text-center text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
+          Keep each term to 14–18 credits so you stay on track for graduation.
+        </Text>
+      </ScrollView>
+
+      {toast ? (
+        <View className="absolute left-5 right-5 top-2 items-center" pointerEvents="none">
+          <View
+            className="rounded-full px-4 py-2.5"
+            style={{ backgroundColor: isDark ? "#1B1815" : "#191512" }}
+          >
+            <Text className="text-xs font-semibold text-white">{toast}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* ── Course editor ─────────────────────────────────────────────── */}
+      <Sheet
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        maxHeightRatio={0.9}
+      >
+        {editTarget ? (
+          <EditorSheet
+            semester={editTarget}
+            plan={planBySemester.get(editTarget.id) ?? null}
+            curriculum={curriculumCourses}
+            query={sheetQuery}
+            onQuery={setSheetQuery}
+            isDark={isDark}
+            saving={savePlan.isPending}
+            onClose={() => setEditTarget(null)}
+            onSave={(courseIds) => {
+              savePlan.mutate(
+                {
+                  semesterId: editTarget.id,
+                  planType: "REGULAR",
+                  courseIds,
+                },
+                {
+                  onSuccess: () => {
+                    setEditTarget(null);
+                    setToast("Draft saved");
+                  },
+                  onError: () => setToast("Could not save the draft. Please try again."),
+                },
+              );
+            }}
+          />
+        ) : null}
       </Sheet>
     </SafeAreaView>
   );
 }
 
-// ─── Timeline semester (one node) ────────────────────────────────────────────
+/* ═════════════════════════════════════════════════════════════════════ */
+/* One term                                                            */
+/* ═════════════════════════════════════════════════════════════════════ */
 
-function TimelineSemester({
+function TermCard({
   semester,
-  index,
-  isLast,
+  plan,
   isDark,
-  open,
-  onToggle,
-  onRemove,
-  onAdd,
+  advisorName,
+  busy,
+  onEdit,
+  onSubmit,
 }: {
-  semester: StudyPlan["semesters"][number];
-  index: number;
-  isLast: boolean;
+  semester: PlanSemester;
+  plan: CurriculumPlan | null;
   isDark: boolean;
-  open: boolean;
-  onToggle: () => void;
-  onRemove: (courseId: string) => void;
-  onAdd: () => void;
+  advisorName: string;
+  busy: boolean;
+  onEdit: () => void;
+  onSubmit: () => void;
 }) {
-  const semCredits = semester.courses.reduce((s, c) => s + c.credits, 0);
-  const isCurrent = index === 0;
+  const status = plan?.header.status ?? "DRAFT";
+  const tone = statusTone(status);
+  const issues = plan?.issues ?? [];
+  const canSubmit = !!plan && !["SUBMITTED", "PENDING_REVIEW", "APPROVED"].includes(status.toUpperCase());
 
   return (
-    <View className="flex-row gap-3">
-      {/* Rail */}
-      <View className="items-center" style={{ width: 28 }}>
-        <View
-          className="items-center justify-center rounded-full"
-          style={{
-            width: 28,
-            height: 28,
-            backgroundColor: isCurrent ? ORANGE : isDark ? "#1B1815" : "#FFFFFF",
-            borderWidth: isCurrent ? 0 : 2,
-            borderColor: isCurrent ? "transparent" : isDark ? "#302A24" : "#EAE1D8",
-          }}
-        >
-          {isCurrent ? (
-            <MaterialCommunityIcons name="star" size={14} color="#fff" />
-          ) : (
-            <Text
-              className="text-[11px] font-bold tabular-nums"
-              style={{ color: isDark ? "#A79C93" : "#8B8178" }}
-            >
-              {index + 1}
+    <View className="overflow-hidden rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
+      <Pressable
+        onPress={onEdit}
+        accessibilityRole="button"
+        accessibilityLabel={`Edit the plan for ${semester.name}`}
+        className="p-4 active:opacity-80"
+      >
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-ink dark:text-ink-dark" numberOfLines={1}>
+              {semester.name}
             </Text>
-          )}
+            <Text className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark tabular-nums">
+              {semester.code} · {semester.startDate} → {semester.endDate}
+            </Text>
+          </View>
+          <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: isDark ? "#241F1B" : tone.bg }}>
+            <Text
+              className="text-[10px] font-bold"
+              style={{ color: isDark && tone.bg === "#F2EDE7" ? "#A79C93" : tone.fg }}
+            >
+              {statusLabel(status).toUpperCase()}
+            </Text>
+          </View>
         </View>
-        {!isLast && (
-          <View
-            className="w-[2px] flex-1"
-            style={{
-              backgroundColor: isDark ? "#302A24" : "#EAE1D8",
-              minHeight: 24,
-              marginVertical: 4,
-            }}
-          />
+
+        {plan ? (
+          <>
+            <Text className="mt-2.5 text-[12px] text-ink-muted dark:text-ink-muted-dark tabular-nums">
+              {plan.courses.length} courses · {plan.header.totalCredits} credits
+              {plan.header.version > 1 ? ` · version ${plan.header.version}` : ""}
+            </Text>
+
+            <View className="mt-2.5 gap-1.5">
+              {plan.courses.slice(0, 4).map((c) => (
+                <View key={c.id} className="flex-row items-center gap-2">
+                  <Text
+                    className="text-[11px] font-bold tabular-nums"
+                    style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                  >
+                    {c.code}
+                  </Text>
+                  <Text
+                    className="flex-1 text-[12px] text-ink dark:text-ink-dark"
+                    numberOfLines={1}
+                  >
+                    {c.name}
+                  </Text>
+                  <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark tabular-nums">
+                    {c.credits} cr
+                  </Text>
+                </View>
+              ))}
+              {plan.courses.length > 4 ? (
+                <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark">
+                  +{plan.courses.length - 4} more
+                </Text>
+              ) : null}
+            </View>
+          </>
+        ) : (
+          <Text className="mt-2.5 text-[12px] text-ink-faint dark:text-ink-faint-dark">
+            No plan yet — tap to choose your courses.
+          </Text>
         )}
-      </View>
+      </Pressable>
 
-      {/* Card */}
-      <View className="flex-1 pb-4">
-        <View className="overflow-hidden rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-          <Pressable onPress={onToggle} accessibilityRole="button" className="p-4 active:opacity-80">
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-1">
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-[15px] font-bold text-ink dark:text-ink-dark" numberOfLines={1}>
-                    {semester.semester_label}
-                  </Text>
-                  {isCurrent ? (
-                    <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: "#FFF1E7" }}>
-                      <Text className="text-[10px] font-bold" style={{ color: ORANGE_DEEP }}>
-                        HIỆN TẠI
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text className="mt-1 text-[11px] text-ink-muted dark:text-ink-muted-dark tabular-nums">
-                  {semester.courses.length} môn · {semCredits} tín chỉ · GPA {semester.projected_gpa.toFixed(2)}
-                </Text>
-              </View>
+      {/* Validation issues — the backend's own rules for this plan. */}
+      {issues.length > 0 ? (
+        <View
+          className="mx-4 mb-3 rounded-2xl px-3 py-2.5"
+          style={{ backgroundColor: isDark ? "#2A1E17" : "#FFF7ED" }}
+        >
+          {issues.slice(0, 3).map((issue, i) => (
+            <View key={i} className="flex-row items-start gap-2 py-0.5">
               <MaterialCommunityIcons
-                name={open ? "chevron-up" : "chevron-down"}
-                size={20}
-                color={isDark ? "#A79C93" : "#8B8178"}
+                name="alert-circle-outline"
+                size={14}
+                color={isDark ? "#FFA371" : ORANGE_DEEP}
+                style={{ marginTop: 1 }}
               />
+              <Text className="flex-1 text-[11px] leading-[16px] text-ink-muted dark:text-ink-muted-dark">
+                {issue}
+              </Text>
             </View>
-          </Pressable>
-
-          {open && (
-            <View className="px-4 pb-4">
-              <View className="h-px bg-rule dark:bg-rule-dark" />
-              {semester.courses.length === 0 ? (
-                <View
-                  className="mt-3 items-center rounded-2xl border border-dashed px-4 py-5"
-                  style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
-                >
-                  <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">
-                    Kỳ này chưa có môn nào
-                  </Text>
-                </View>
-              ) : (
-                <View className="mt-1">
-                  {semester.courses.map((c, i) => (
-                    <View key={c.course_id}>
-                      <View className="flex-row items-center gap-3 py-3">
-                        <View className="flex-1">
-                          <View className="flex-row items-center gap-2">
-                            <Text
-                              className="text-[11px] font-bold tracking-wide tabular-nums"
-                              style={{ color: ORANGE_DEEP }}
-                            >
-                              {c.course_code}
-                            </Text>
-                            <View className="rounded-full bg-raised px-2 py-0.5 dark:bg-raised-dark">
-                              <Text className="text-[10px] font-bold text-ink-muted dark:text-ink-muted-dark tabular-nums">
-                                {c.credits} TC
-                              </Text>
-                            </View>
-                          </View>
-                          <Text
-                            className="mt-1 text-[14px] font-semibold leading-5 text-ink dark:text-ink-dark"
-                            numberOfLines={2}
-                          >
-                            {c.course_name}
-                          </Text>
-                          {c.reason ? (
-                            <Text
-                              className="mt-0.5 text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark"
-                              numberOfLines={2}
-                            >
-                              {c.reason}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Pressable
-                          onPress={() => onRemove(c.course_id)}
-                          hitSlop={12}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Xóa ${c.course_code} khỏi kế hoạch`}
-                          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-                          style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
-                        >
-                          <MaterialCommunityIcons name="trash-can-outline" size={18} color="#B5460D" />
-                        </Pressable>
-                      </View>
-                      {i < semester.courses.length - 1 && (
-                        <View className="h-px bg-rule dark:bg-rule-dark" />
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <Pressable
-                onPress={onAdd}
-                accessibilityRole="button"
-                accessibilityLabel={`Thêm môn vào ${semester.semester_label}`}
-                className="mt-3 flex-row items-center justify-center gap-2 rounded-2xl border border-dashed py-3.5 active:opacity-70"
-                style={{ borderColor: ORANGE }}
-              >
-                <MaterialCommunityIcons name="plus" size={17} color={ORANGE} />
-                <Text className="text-[13px] font-bold" style={{ color: ORANGE }}>
-                  Thêm môn vào kỳ này
-                </Text>
-              </Pressable>
-            </View>
-          )}
+          ))}
         </View>
+      ) : null}
+
+      <View className="flex-row items-center gap-2 border-t border-line px-4 py-3 dark:border-line-dark">
+        <Pressable
+          onPress={onEdit}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit the plan for ${semester.name}`}
+          className="flex-1 items-center rounded-2xl border border-line py-3 active:opacity-70 dark:border-line-dark"
+        >
+          <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
+            {plan ? "Edit courses" : "Choose courses"}
+          </Text>
+        </Pressable>
+
+        {canSubmit ? (
+          <Pressable
+            onPress={onSubmit}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={`Send the plan for ${semester.name} for review`}
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl py-3 active:opacity-85"
+            style={{ backgroundColor: ORANGE, opacity: busy ? 0.7 : 1 }}
+          >
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="send" size={15} color="#fff" />
+                <Text className="text-[13px] font-bold text-white">Send for review</Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
       </View>
+
+      {plan && ["SUBMITTED", "PENDING_REVIEW"].includes(status.toUpperCase()) ? (
+        <Text className="px-4 pb-3 text-[11px] text-ink-faint dark:text-ink-faint-dark">
+          Waiting for {advisorName} to review this term.
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-// ─── Add sheet ───────────────────────────────────────────────────────────────
+/* ═════════════════════════════════════════════════════════════════════ */
+/* The editor                                                          */
+/* ═════════════════════════════════════════════════════════════════════ */
 
-function AddCourseSheet({
-  semesterLabel,
+function EditorSheet({
+  semester,
+  plan,
+  curriculum,
   query,
   onQuery,
-  candidates,
-  onAdd,
-  onDone,
+  isDark,
+  saving,
+  onClose,
+  onSave,
 }: {
-  semesterLabel: string;
+  semester: PlanSemester;
+  plan: CurriculumPlan | null;
+  curriculum: CurriculumCourse[];
   query: string;
   onQuery: (q: string) => void;
-  candidates: { id: string; code: string; name: string; credits: number }[];
-  onAdd: (c: { id: string; code: string; name: string; credits: number }) => void;
-  onDone: () => void;
+  isDark: boolean;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (courseIds: string[]) => void;
 }) {
-  const [addedId, setAddedId] = useState<string | null>(null);
+  /**
+   * The courses the student has picked, in the order they picked them.
+   * The plan's course rows already carry the real course ids, so the
+   * initial pick is the saved plan itself.
+   */
+  const [selected, setSelected] = useState<string[]>(() =>
+    plan?.courses.map((c) => c.id) ?? [],
+  );
+
+  /**
+   * The curriculum rows keyed by course id, merged with the plan's own
+   * course rows so a course still renders even before the curriculum
+   * query resolves.
+   */
+  const lookup = useMemo(() => {
+    const m = new Map<string, CourseRow>();
+    for (const c of curriculum) {
+      m.set(c.courseId, {
+        courseId: c.courseId,
+        code: c.code,
+        name: c.name,
+        credits: c.credits,
+        semesterNumber: c.semesterNumber,
+        mandatory: c.mandatory,
+      });
+    }
+    for (const c of plan?.courses ?? []) {
+      if (!m.has(c.id)) {
+        m.set(c.id, {
+          courseId: c.id,
+          code: c.code,
+          name: c.name,
+          credits: c.credits,
+          semesterNumber: 0,
+          mandatory: false,
+        });
+      }
+    }
+    return m;
+  }, [curriculum, plan]);
+
+  const candidates = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return curriculum
+      .filter((c) => !selected.includes(c.courseId))
+      .filter((c) =>
+        q ? c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) : true,
+      );
+  }, [curriculum, selected, query]);
+
+  const selectedCourses = useMemo(
+    () =>
+      selected
+        .map((id) => lookup.get(id))
+        .filter((c): c is CourseRow => !!c),
+    [selected, lookup],
+  );
+
+  const totalCredits = selectedCourses.reduce((s, c) => s + c.credits, 0);
+
+  const toggle = (course: CourseRow) => {
+    setSelected((prev) =>
+      prev.includes(course.courseId)
+        ? prev.filter((id) => id !== course.courseId)
+        : [...prev, course.courseId],
+    );
+  };
 
   return (
     <View>
-      <Text className="text-lg font-bold text-ink dark:text-ink-dark">Thêm môn học</Text>
+      <Text className="text-lg font-bold text-ink dark:text-ink-dark">
+        Plan {semester.name}
+      </Text>
       <Text className="mt-1 text-[13px] text-ink-muted dark:text-ink-muted-dark">
-        Vào {semesterLabel} · chạm dấu cộng để thêm ngay
+        Pick the courses you want to register for this term.
       </Text>
 
-      <View className="mt-4 flex-row items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2.5 dark:border-line-dark">
-        <MaterialCommunityIcons name="magnify" size={18} color="#8B8178" />
-        <TextInput
-          value={query}
-          onChangeText={onQuery}
-          placeholder="Tìm theo mã hoặc tên môn…"
-          placeholderTextColor="#8B8178"
-          autoCapitalize="none"
-          autoCorrect={false}
-          className="flex-1 text-sm text-ink dark:text-ink-dark"
-        />
-        {query.length > 0 && (
-          <Pressable onPress={() => onQuery("")} hitSlop={8}>
-            <MaterialCommunityIcons name="close-circle" size={18} color="#8B8178" />
-          </Pressable>
-        )}
-      </View>
+      {/* ── The pick list ────────────────────────────────────────────── */}
+      {selectedCourses.length > 0 ? (
+        <View className="mt-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-[12px] font-bold text-ink dark:text-ink-dark">
+              Selected
+            </Text>
+            <Text className="text-[12px] text-ink-muted dark:text-ink-muted-dark tabular-nums">
+              {selectedCourses.length} courses · {totalCredits} credits
+            </Text>
+          </View>
 
-      {candidates.length === 0 ? (
-        <View className="items-center py-10">
-          <MaterialCommunityIcons name="book-search-outline" size={40} color="#CBD5E1" />
-          <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-            Không còn môn gợi ý nào khớp. Thử từ khóa khác.
-          </Text>
-        </View>
-      ) : (
-        <View className="mt-3 gap-2 pb-2">
-          {candidates.map((c) => {
-            const justAdded = addedId === c.id;
-            return (
+          <View className="mt-2 gap-2">
+            {selectedCourses.map((c) => (
               <View
-                key={c.id}
-                className="flex-row items-center gap-3 rounded-2xl border border-line p-3 dark:border-line-dark"
+                key={c.courseId}
+                className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 dark:border-line-dark dark:bg-surface-dark"
               >
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2">
@@ -751,41 +640,141 @@ function AddCourseSheet({
                       {c.code}
                     </Text>
                     <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark tabular-nums">
-                      {c.credits} TC
+                      {c.credits} cr
                     </Text>
+                    {c.mandatory ? (
+                      <View
+                        className="rounded-full px-2 py-0.5"
+                        style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+                      >
+                        <Text
+                          className="text-[10px] font-bold"
+                          style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                        >
+                          REQUIRED
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                  <Text className="mt-0.5 text-sm font-semibold text-ink dark:text-ink-dark" numberOfLines={2}>
+                  <Text
+                    className="mt-0.5 text-[13px] font-semibold text-ink dark:text-ink-dark"
+                    numberOfLines={2}
+                  >
                     {c.name}
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => {
-                    onAdd(c);
-                    setAddedId(c.id);
-                    setTimeout(() => setAddedId(null), 1200);
-                  }}
+                  onPress={() => toggle(c)}
+                  hitSlop={12}
                   accessibilityRole="button"
-                  accessibilityLabel={`Thêm ${c.code}`}
-                  className="h-10 w-10 items-center justify-center rounded-full active:opacity-80"
-                  style={{ backgroundColor: justAdded ? "#16A34A" : ORANGE }}
+                  accessibilityLabel={`Remove ${c.code} from the plan`}
+                  className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+                  style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
                 >
-                  <MaterialCommunityIcons
-                    name={justAdded ? "check" : "plus"}
-                    size={20}
-                    color="#fff"
-                  />
+                  <MaterialCommunityIcons name="close" size={18} color="#B5460D" />
                 </Pressable>
               </View>
-            );
-          })}
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {/* ── Search ───────────────────────────────────────────────────── */}
+      <View className="mt-4 flex-row items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2.5 dark:border-line-dark">
+        <MaterialCommunityIcons name="magnify" size={18} color="#8B8178" />
+        <TextInput
+          value={query}
+          onChangeText={onQuery}
+          placeholder="Search by course code or name…"
+          placeholderTextColor="#8B8178"
+          autoCapitalize="none"
+          autoCorrect={false}
+          className="flex-1 text-sm text-ink dark:text-ink-dark"
+        />
+        {query.length > 0 ? (
+          <Pressable onPress={() => onQuery("")} hitSlop={8}>
+            <MaterialCommunityIcons name="close-circle" size={18} color="#8B8178" />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {candidates.length === 0 ? (
+        <View className="items-center py-8">
+          <MaterialCommunityIcons name="book-search-outline" size={38} color="#CBD5E1" />
+          <Text className="mt-3 text-center text-[13px] text-ink-muted dark:text-ink-muted-dark">
+            {curriculum.length === 0
+              ? "Your curriculum is not available yet."
+              : "No other course matches your search."}
+          </Text>
+        </View>
+      ) : (
+        <View className="mt-3 gap-2">
+          {candidates.map((c) => (
+            <Pressable
+              key={c.courseId}
+              onPress={() => toggle(c)}
+              accessibilityRole="button"
+              accessibilityLabel={`Add ${c.code} to the plan`}
+              className="flex-row items-center gap-3 rounded-2xl border border-line px-3.5 py-3 active:opacity-70 dark:border-line-dark"
+            >
+              <View className="flex-1">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-[11px] font-bold" style={{ color: ORANGE_DEEP }}>
+                    {c.code}
+                  </Text>
+                  <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark tabular-nums">
+                    {c.credits} cr
+                  </Text>
+                  {c.semesterNumber ? (
+                    <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark">
+                      · term {c.semesterNumber}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text
+                  className="mt-0.5 text-[13px] font-semibold text-ink dark:text-ink-dark"
+                  numberOfLines={2}
+                >
+                  {c.name}
+                </Text>
+              </View>
+              <View
+                className="h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: ORANGE }}
+              >
+                <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+              </View>
+            </Pressable>
+          ))}
         </View>
       )}
 
       <Pressable
-        onPress={onDone}
+        onPress={() => onSave(selected)}
+        disabled={saving || selected.length === 0}
+        accessibilityRole="button"
+        accessibilityLabel="Save the plan draft"
+        className="mt-4 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-85"
+        style={{
+          backgroundColor: ORANGE,
+          opacity: saving || selected.length === 0 ? 0.5 : 1,
+        }}
+      >
+        {saving ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <>
+            <MaterialCommunityIcons name="content-save-outline" size={17} color="#fff" />
+            <Text className="text-sm font-bold text-white">Save draft</Text>
+          </>
+        )}
+      </Pressable>
+
+      <Pressable
+        onPress={onClose}
         className="mt-2 items-center rounded-2xl bg-raised py-4 active:opacity-80 dark:bg-raised-dark"
       >
-        <Text className="text-sm font-bold text-ink dark:text-ink-dark">Xong</Text>
+        <Text className="text-sm font-bold text-ink dark:text-ink-dark">Cancel</Text>
       </Pressable>
     </View>
   );
@@ -794,16 +783,11 @@ function AddCourseSheet({
 function PlanSkeleton() {
   return (
     <View className="px-5 pt-4">
-      <Skeleton height={220} className="rounded-[28px]" />
-      <View className="mt-4 flex-row gap-3">
-        <Skeleton height={76} className="flex-1 rounded-3xl" />
-        <Skeleton height={76} className="flex-1 rounded-3xl" />
-        <Skeleton height={76} className="flex-1 rounded-3xl" />
-      </View>
-      <View className="mt-6 gap-3">
-        <Skeleton height={110} className="rounded-3xl" />
-        <Skeleton height={110} className="rounded-3xl" />
-        <Skeleton height={110} className="rounded-3xl" />
+      <Skeleton height={76} className="rounded-3xl" />
+      <View className="mt-4 gap-3">
+        <Skeleton height={150} className="rounded-3xl" />
+        <Skeleton height={150} className="rounded-3xl" />
+        <Skeleton height={150} className="rounded-3xl" />
       </View>
       <View className="mt-6 items-center">
         <ActivityIndicator color={ORANGE} />

@@ -1,44 +1,15 @@
 /**
- * Transcript service — semester grades + OJT status (FE-S-3).
- *
- * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
- * The `else` branch already contains the real HTTP calls. Flip
- * `config.isMockMode` to false (app.json → extra, or EXPO_PUBLIC_MOCK_MODE)
- * to switch over.
+ * Transcript service — the official record of the student's results.
  */
-import { config } from "@/config/api";
 import { http } from "@/lib/http";
-import { getAuthToken } from "@/lib/api/token";
-import { mockDelay } from "@/lib/db/mockDelay";
-import {
-  mockTranscripts,
-  type StudentTranscript,
-  type OjtStatus,
-  type TranscriptCourseGrade,
-  type TranscriptOjt,
-  type TranscriptSemester,
-} from "@/lib/db/mockDb";
+import type { AcademicProgress, TranscriptRow } from "@/types";
 
-export type {
-  StudentTranscript,
-  OjtStatus,
-  TranscriptCourseGrade,
-  TranscriptOjt,
-  TranscriptSemester,
-};
+/** `GET /api/student/transcript` — one row per course attempt. */
+export async function getTranscript(): Promise<TranscriptRow[]> {
+  return http.get<TranscriptRow[]>("/api/student/transcript");
+}
 
-export async function getTranscript(studentId: string): Promise<StudentTranscript | null> {
-  if (config.isMockMode) {
-    await mockDelay();
-    const found = mockTranscripts.find((t) => t.student_id === studentId);
-    if (!found) return null;
-    // Deep clone so screens cannot mutate the shared mock seed.
-    return JSON.parse(JSON.stringify(found)) as StudentTranscript;
-  }
-
-  // TODO: Wire BE later
-  const token = await getAuthToken();
-  return http.get<StudentTranscript>(`/api/students/${studentId}/transcript`, {
-    token,
-  });
+/** `GET /api/student/progress` */
+export async function getProgress(): Promise<AcademicProgress> {
+  return http.get<AcademicProgress>("/api/student/progress");
 }

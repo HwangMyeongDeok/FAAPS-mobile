@@ -1,14 +1,14 @@
 /**
- * FE-S-9 — Lộ trình học tập AI (AI suggested curriculum roadmap).
+ * FE-S-9 — AI suggested curriculum roadmap.
  *
  * ── Direction ───────────────────────────────────────────────────────────────
  * Style: framed-sheet (app), mapped onto the FPT brand tokens. One warm
  * ground, white cards with a single hairline edge, no shadows at rest, the
  * orange reserved for the data and the one primary action.
  *
- * The screen's one question: "AI sẽ xếp các kỳ còn lại của tôi như thế nào?"
- * — so the vertical timeline IS the screen, and the summary above it is
- * three numbers, not a grid of tiles.
+ * The screen's one question: "How should the AI lay out my remaining
+ * semesters?" — so the vertical timeline IS the screen, and the summary
+ * above it is three numbers, not a grid of tiles.
  *
  * ── Design notes ────────────────────────────────────────────────────────────
  * • A vertical rail carries the terms. Past terms are closed and quiet; the
@@ -16,7 +16,7 @@
  *   assistant's proposal, marked as such.
  * • Each course row states its credits and, when it has one, its
  *   prerequisite codes — the reason the assistant ordered it that way.
- * • "Tạo lại lộ trình" regenerates under a different constraint and the
+ * • "Regenerate" re-runs the plan under a different constraint and the
  *   screen says what changed, rather than silently swapping the numbers.
  */
 
@@ -31,81 +31,64 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 
 import { goBack } from "@/components/ScreenHeader";
-import { aiKeys, useAiRoadmap, useRegenerateAiRoadmap } from "@/lib/queries/ai";
-import { useAuthStore } from "@/stores/auth";
-import type { AiRoadmapCourse, AiRoadmapRequest, AiRoadmapSemester } from "@/types/ai";
+import { useAiRoadmap, useRegenerateAiRoadmap } from "@/lib/queries/ai";
+import type { AiRoadmapCourse, AiRoadmapSemester } from "@/types/ai";
 
 const ORANGE = "#F36F21";
 const ORANGE_DEEP = "#B5460D";
 
-/** The label for each course category. */
-const CATEGORY_LABEL: Record<string, string> = {
-  CORE: "Lõi",
-  ELECTIVE: "Chuyên ngành",
-  PRACTICUM: "Thực hành",
-  PROJECT: "Đồ án",
-};
-
 /**
- * The three plans the assistant can produce. "Tạo lại lộ trình" walks
- * through them, so the button always returns a genuinely different plan
- * rather than the same one with a new caption.
+ * The three plans the assistant can produce. "Regenerate" walks through
+ * them, so the button always returns a genuinely different plan rather than
+ * the same one with a new caption.
  */
 const ROADMAP_PLANS: {
-  target_gpa: number;
-  preferred_terms: number;
+  goal: string;
+  maxCreditsPerSemester: number;
   note?: string;
 }[] = [
-  { target_gpa: 8.5, preferred_terms: 4, note: undefined },
-  { target_gpa: 9, preferred_terms: 4, note: "cân bằng khối lượng mỗi kỳ" },
-  { target_gpa: 8.5, preferred_terms: 3, note: "ưu tiên môn AI" },
+  { goal: "Graduate on time with a balanced workload", maxCreditsPerSemester: 18 },
+  { goal: "Maximise GPA while staying on track", maxCreditsPerSemester: 16 },
+  { goal: "Prioritise AI and data courses", maxCreditsPerSemester: 20 },
 ];
 
 export default function AiRoadmapScreen() {
   const isDark = useColorScheme() === "dark";
-  const userId = useAuthStore((s) => s.session?.user.id ?? null);
-  const qc = useQueryClient();
 
-  const { data: roadmap, isLoading, isError, refetch } = useAiRoadmap(userId);
-  const regenerate = useRegenerateAiRoadmap(userId);
+  const { data: roadmap, isLoading, isError, refetch } = useAiRoadmap();
+  const regenerate = useRegenerateAiRoadmap();
 
   // The term the student is looking at. Starts on the current term, which
   // is the one they actually need to act on.
   const [focusSemester, setFocusSemester] = useState<number | null>(null);
+  const [planIndex, setPlanIndex] = useState(0);
 
   const currentSemester = useMemo(() => {
-    const current = roadmap?.semesters.find((s) => s.status === "current");
-    return current?.semester ?? 5;
+    const current = roadmap?.semesters.find((s) => s.status === "IN_PROGRESS");
+    return current?.semesterNumber ?? 1;
   }, [roadmap]);
 
   const onRegenerate = useCallback(() => {
     if (regenerate.isPending) return;
-    // Which of the three plans is on screen? The last request the assistant
-    // answered is kept in the query cache, so the button keeps its place
-    // even after the student leaves the screen and comes back.
-    const last = qc.getQueryData<AiRoadmapRequest>(
-      aiKeys.roadmapRequest(userId!),
-    );
-    const index = ROADMAP_PLANS.findIndex(
-      (p) =>
-        p.target_gpa === last?.target_gpa &&
-        p.preferred_terms === last?.preferred_terms &&
-        p.note === last?.note,
-    );
-    // No request cached yet means the default plan is on screen, which is
-    // the first one — so the button moves on to the second.
-    const next = ROADMAP_PLANS[(Math.max(index, 0) + 1) % ROADMAP_PLANS.length];
-    regenerate.mutate({ ...next });
-  }, [qc, regenerate, userId]);
+    const next = (planIndex + 1) % ROADMAP_PLANS.length;
+    setPlanIndex(next);
+    regenerate.mutate(ROADMAP_PLANS[next]);
+  }, [planIndex, regenerate]);
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <RoadmapHeader isDark={isDark} isRegenerating={false} onRegenerate={onRegenerate} />
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
+        <RoadmapHeader
+          isDark={isDark}
+          isRegenerating={false}
+          onRegenerate={onRegenerate}
+        />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={ORANGE} />
         </View>
@@ -115,35 +98,55 @@ export default function AiRoadmapScreen() {
 
   if (isError || !roadmap) {
     return (
-      <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <RoadmapHeader isDark={isDark} isRegenerating={false} onRegenerate={onRegenerate} />
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
+        <RoadmapHeader
+          isDark={isDark}
+          isRegenerating={false}
+          onRegenerate={onRegenerate}
+        />
         <View className="flex-1 items-center justify-center px-8">
-          <MaterialCommunityIcons name="cloud-off-outline" size={40} color="#CBD5E1" />
+          <MaterialCommunityIcons
+            name="cloud-off-outline"
+            size={40}
+            color="#CBD5E1"
+          />
           <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-            Không tải được lộ trình. Kéo xuống để thử lại.
+            Could not load the roadmap. Pull down to try again.
           </Text>
           <Pressable
             onPress={() => refetch()}
             className="mt-4 rounded-full px-6 py-3 active:opacity-80"
             style={{ backgroundColor: ORANGE }}
           >
-            <Text className="text-sm font-bold text-white">Thử lại</Text>
+            <Text className="text-sm font-bold text-white">Try again</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const remaining = roadmap.semesters.filter((s) => s.status !== "completed");
+  const remaining = roadmap.semesters.filter(
+    (s) => s.status !== "COMPLETED",
+  );
   const remainingCredits = remaining.reduce(
     (s, sem) => s + sem.courses.reduce((a, c) => a + c.credits, 0),
     0,
   );
-  const completedCredits = roadmap.earned_credits;
+  const completedCredits = remaining.reduce(
+    (s, sem) =>
+      s +
+      sem.courses
+        .filter((c) => c.status === "COMPLETED" || c.status === "PASSED")
+        .reduce((a, c) => a + c.credits, 0),
+    0,
+  );
   const progress =
-    roadmap.total_credits === 0
+    roadmap.totalCredits === 0
       ? 0
-      : Math.round((completedCredits / roadmap.total_credits) * 100);
+      : Math.round((completedCredits / roadmap.totalCredits) * 100);
 
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
@@ -151,7 +154,7 @@ export default function AiRoadmapScreen() {
         isDark={isDark}
         isRegenerating={regenerate.isPending}
         onRegenerate={onRegenerate}
-        subtitle={`${remaining.length} kỳ còn lại · tốt nghiệp ${roadmap.graduation_term}`}
+        subtitle={`${remaining.length} semesters left · ${roadmap.totalCredits} credits`}
       />
 
       <ScrollView
@@ -164,34 +167,34 @@ export default function AiRoadmapScreen() {
           <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
             <View className="flex-1 items-center px-2 py-4">
               <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                Còn lại
+                Remaining
               </Text>
               <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
                 {remainingCredits}
                 <Text className="text-[11px] font-medium text-ink-faint dark:text-ink-faint-dark">
                   {" "}
-                  TC
+                  cr
                 </Text>
               </Text>
             </View>
             <View className="w-px bg-line dark:bg-line-dark" />
             <View className="flex-1 items-center px-2 py-4">
               <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                GPA dự kiến
+                Semesters
               </Text>
               <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                {roadmap.projected_gpa.toFixed(2)}
+                {roadmap.totalSemesters}
               </Text>
             </View>
             <View className="w-px bg-line dark:bg-line-dark" />
             <View className="flex-1 items-center px-2 py-4">
               <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                Đã tích lũy
+                Completed
               </Text>
               <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
                 {completedCredits}
                 <Text className="text-[11px] font-medium text-ink-faint dark:text-ink-faint-dark">
-                  /{roadmap.total_credits}
+                  /{roadmap.totalCredits}
                 </Text>
               </Text>
             </View>
@@ -199,30 +202,32 @@ export default function AiRoadmapScreen() {
         </View>
 
         {/* ── The strategy line — what the assistant optimised for ──── */}
-        <View className="px-5 pt-3">
-          <View className="flex-row items-start gap-2.5 rounded-2xl bg-brand-tint px-4 py-3 dark:bg-brand-tint-dark">
-            <MaterialCommunityIcons
-              name="creation-outline"
-              size={16}
-              color={isDark ? "#FFA371" : ORANGE_DEEP}
-              style={{ marginTop: 1 }}
-            />
-            <View className="flex-1">
-              <Text className="text-[12px] font-bold text-ink dark:text-ink-dark">
-                Chiến lược của AI
-              </Text>
-              <Text className="mt-0.5 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
-                {roadmap.strategy}
-              </Text>
+        {roadmap.summary ? (
+          <View className="px-5 pt-3">
+            <View className="flex-row items-start gap-2.5 rounded-2xl bg-brand-tint px-4 py-3 dark:bg-brand-tint-dark">
+              <MaterialCommunityIcons
+                name="creation-outline"
+                size={16}
+                color={isDark ? "#FFA371" : ORANGE_DEEP}
+                style={{ marginTop: 1 }}
+              />
+              <View className="flex-1">
+                <Text className="text-[12px] font-bold text-ink dark:text-ink-dark">
+                  {"The AI's strategy"}
+                </Text>
+                <Text className="mt-0.5 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
+                  {roadmap.summary}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        ) : null}
 
         {/* ── Progress to graduation ─────────────────────────────────── */}
         <View className="px-5 pt-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-[12px] font-semibold text-ink-muted dark:text-ink-muted-dark">
-              Tiến độ chương trình
+              Programme progress
             </Text>
             <Text className="text-[12px] font-bold text-ink tabular-nums dark:text-ink-dark">
               {progress}%
@@ -242,29 +247,32 @@ export default function AiRoadmapScreen() {
         {/* ── The vertical timeline ──────────────────────────────────── */}
         <View className="px-5 pt-6">
           <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-            Lộ trình từng kỳ
+            Semester-by-semester plan
           </Text>
           <Text className="mt-0.5 text-[12px] text-ink-muted dark:text-ink-muted-dark">
-            {roadmap.semesters.length} kỳ · chạm một kỳ để mở danh sách môn
+            {roadmap.semesters.length} semesters · tap one to see its courses
           </Text>
 
           <View className="mt-4">
             {roadmap.semesters.map((semester, index) => (
               <TermNode
-                key={semester.semester}
+                key={semester.semesterNumber}
                 semester={semester}
                 isLast={index === roadmap.semesters.length - 1}
                 isDark={isDark}
                 open={
-                  focusSemester === semester.semester ||
-                  (focusSemester === null && semester.semester === currentSemester)
+                  focusSemester === semester.semesterNumber ||
+                  (focusSemester === null &&
+                    semester.semesterNumber === currentSemester)
                 }
                 onToggle={() =>
                   setFocusSemester((prev) =>
-                    prev === semester.semester ? null : semester.semester,
+                    prev === semester.semesterNumber
+                      ? null
+                      : semester.semesterNumber,
                   )
                 }
-                onCoursePress={() => router.push("/(app)/courses")}
+                onCoursePress={() => router.push("/(app)/(tabs)/courses")}
               />
             ))}
           </View>
@@ -276,10 +284,10 @@ export default function AiRoadmapScreen() {
             <View className="items-center rounded-3xl border border-line bg-surface px-7 py-6 dark:border-line-dark dark:bg-surface-dark">
               <ActivityIndicator color={ORANGE} />
               <Text className="mt-3 text-[13px] font-bold text-ink dark:text-ink-dark">
-                AI đang tính lại lộ trình…
+                The AI is recalculating…
               </Text>
               <Text className="mt-1 text-center text-[11px] text-ink-muted dark:text-ink-muted-dark">
-                Đang tối ưu thứ tự môn theo ràng buộc mới
+                Optimising the course order under the new constraint
               </Text>
             </View>
           </View>
@@ -310,7 +318,7 @@ function RoadmapHeader({
         <Pressable
           onPress={goBack}
           accessibilityRole="button"
-          accessibilityLabel="Quay lại"
+          accessibilityLabel="Go back"
           hitSlop={10}
           className="-ml-1 h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
@@ -326,10 +334,10 @@ function RoadmapHeader({
             accessibilityRole="header"
             className="text-[17px] font-bold text-ink dark:text-ink-dark"
           >
-            Lộ trình học tập AI
+            AI study roadmap
           </Text>
           <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
-            {subtitle ?? "Gợi ý của AI theo chương trình K19"}
+            {subtitle ?? "The AI's proposal for your remaining semesters"}
           </Text>
         </View>
 
@@ -338,19 +346,15 @@ function RoadmapHeader({
           onPress={onRegenerate}
           disabled={isRegenerating}
           accessibilityRole="button"
-          accessibilityLabel="Tạo lại lộ trình"
+          accessibilityLabel="Regenerate the roadmap"
           className="flex-row items-center gap-1.5 rounded-full px-3.5 py-2.5 active:opacity-80"
           style={{
             backgroundColor: ORANGE,
             opacity: isRegenerating ? 0.7 : 1,
           }}
         >
-          <MaterialCommunityIcons
-            name="refresh"
-            size={15}
-            color="#FFFFFF"
-          />
-          <Text className="text-[12px] font-bold text-white">Tạo lại</Text>
+          <MaterialCommunityIcons name="refresh" size={15} color="#FFFFFF" />
+          <Text className="text-[12px] font-bold text-white">Regenerate</Text>
         </Pressable>
       </View>
     </View>
@@ -377,8 +381,8 @@ function TermNode({
   onCoursePress: () => void;
 }) {
   const credits = semester.courses.reduce((s, c) => s + c.credits, 0);
-  const isCurrent = semester.status === "current";
-  const isCompleted = semester.status === "completed";
+  const isCurrent = semester.status === "IN_PROGRESS";
+  const isCompleted = semester.status === "COMPLETED";
 
   return (
     <View className="flex-row gap-3">
@@ -413,7 +417,7 @@ function TermNode({
               className="text-[11px] font-bold tabular-nums"
               style={{ color: isDark ? "#A79C93" : "#8B8178" }}
             >
-              {semester.semester}
+              {semester.semesterNumber}
             </Text>
           )}
         </View>
@@ -434,20 +438,16 @@ function TermNode({
         <Pressable
           onPress={onToggle}
           accessibilityRole="button"
-          accessibilityLabel={`${semester.label} · ${semester.term}`}
+          accessibilityLabel={`${semester.title} · ${semester.semesterCode}`}
           accessibilityState={{ expanded: open }}
           className="rounded-3xl border border-line bg-surface px-4 py-3.5 active:opacity-80 dark:border-line-dark dark:bg-surface-dark"
-          style={
-            isCurrent
-              ? { borderColor: ORANGE, borderWidth: 1.5 }
-              : undefined
-          }
+          style={isCurrent ? { borderColor: ORANGE, borderWidth: 1.5 } : undefined}
         >
           <View className="flex-row items-start gap-2">
             <View className="flex-1">
               <View className="flex-row items-center gap-2">
                 <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-                  {semester.label}
+                  {semester.title}
                 </Text>
                 {isCurrent ? (
                   <View
@@ -458,27 +458,25 @@ function TermNode({
                       className="text-[10px] font-bold"
                       style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
                     >
-                      ĐANG HỌC
+                      CURRENT
                     </Text>
                   </View>
                 ) : null}
-                {semester.status === "planned" ? (
+                {semester.status === "PLANNED" ? (
                   <View
                     className="rounded-full px-2 py-0.5"
                     style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
                   >
                     <Text className="text-[10px] font-bold text-ink-muted dark:text-ink-muted-dark">
-                      AI GỢI Ý
+                      AI PROPOSAL
                     </Text>
                   </View>
                 ) : null}
               </View>
 
               <Text className="mt-1 text-[11px] text-ink-muted dark:text-ink-muted-dark tabular-nums">
-                {semester.term} · {semester.courses.length} môn · {credits} tín chỉ
-                {semester.status !== "completed"
-                  ? ` · GPA ${semester.projected_gpa.toFixed(2)}`
-                  : ""}
+                {semester.semesterCode} · {semester.courses.length} courses ·{" "}
+                {credits} credits
               </Text>
             </View>
 
@@ -490,9 +488,11 @@ function TermNode({
           </View>
 
           {/* The note is always visible — it is the assistant's reasoning. */}
-          <Text className="mt-2 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
-            {semester.note}
-          </Text>
+          {semester.note ? (
+            <Text className="mt-2 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
+              {semester.note}
+            </Text>
+          ) : null}
         </Pressable>
 
         {open ? (
@@ -503,14 +503,14 @@ function TermNode({
                 style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
               >
                 <Text className="text-center text-[12px] text-ink-muted dark:text-ink-muted-dark">
-                  Kỳ này chưa có môn nào
+                  No courses in this semester
                 </Text>
               </View>
             ) : (
               <View className="gap-2">
                 {semester.courses.map((course) => (
                   <CourseRow
-                    key={`${semester.semester}-${course.course_code}`}
+                    key={`${semester.semesterNumber}-${course.courseId}`}
                     course={course}
                     isDark={isDark}
                     onPress={onCoursePress}
@@ -542,7 +542,7 @@ function CourseRow({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${course.course_code} ${course.course_name}`}
+      accessibilityLabel={`${course.courseCode} ${course.courseName}`}
       className="rounded-2xl border border-line bg-surface px-3.5 py-3 active:opacity-70 dark:border-line-dark dark:bg-surface-dark"
     >
       <View className="flex-row items-start gap-3">
@@ -552,28 +552,32 @@ function CourseRow({
               className="text-[11px] font-bold tabular-nums"
               style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
             >
-              {course.course_code}
+              {course.courseCode}
             </Text>
-            <View
-              className="rounded-full px-2 py-0.5"
-              style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
-            >
-              <Text className="text-[10px] font-semibold text-ink-muted dark:text-ink-muted-dark">
-                {CATEGORY_LABEL[course.category] ?? course.category}
-              </Text>
-            </View>
+            {course.categoryName ? (
+              <View
+                className="rounded-full px-2 py-0.5"
+                style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+              >
+                <Text className="text-[10px] font-semibold text-ink-muted dark:text-ink-muted-dark">
+                  {course.categoryName}
+                </Text>
+              </View>
+            ) : null}
             <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark tabular-nums">
-              {course.credits} TC
+              {course.credits} cr
             </Text>
           </View>
 
           <Text className="mt-1 text-[13px] font-semibold leading-[19px] text-ink dark:text-ink-dark">
-            {course.course_name}
+            {course.courseName}
           </Text>
 
-          <Text className="mt-1 text-[11px] leading-[16px] text-ink-muted dark:text-ink-muted-dark">
-            {course.reason}
-          </Text>
+          {course.reason ? (
+            <Text className="mt-1 text-[11px] leading-[16px] text-ink-muted dark:text-ink-muted-dark">
+              {course.reason}
+            </Text>
+          ) : null}
 
           {course.prerequisites.length > 0 ? (
             <View className="mt-1.5 flex-row items-center gap-1.5">
@@ -583,7 +587,7 @@ function CourseRow({
                 color={isDark ? "#7D746C" : "#A79C93"}
               />
               <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark">
-                Cần trước: {course.prerequisites.join(", ")}
+                Requires: {course.prerequisites.join(", ")}
               </Text>
             </View>
           ) : null}

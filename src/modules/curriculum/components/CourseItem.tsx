@@ -2,18 +2,21 @@ import { Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { Badge } from "@/components/ui";
-import { CourseTypeIcon, courseTypeBadgeClass, courseTypeLabel, type CourseType } from "./CourseTypeIcon";
 
 export type CourseStatus = "completed" | "in_progress" | "locked" | "available";
 
 export interface CourseItemData {
+  /** The course id (UUID) used by the backend. */
   id: string;
-  course_code: string;
+  code: string;
   name: string;
   credits: number;
-  type: CourseType;
+  /** The semester this course belongs to inside the curriculum. */
   semester: number;
-  prerequisites: string[];
+  /** Whether the course is mandatory for the curriculum. */
+  mandatory: boolean;
+  /** The elective group, when the course belongs to one. */
+  groupName: string | null;
   completed: boolean;
 }
 
@@ -25,22 +28,18 @@ interface CourseItemProps {
   status?: CourseStatus;
 }
 
-const statusVisuals: Record<CourseStatus, {
-  iconName: string;
-  color: string;
-  label: string;
-}> = {
-  completed:   { iconName: "check-circle",     color: "#10B981", label: "Hoàn thành" },
-  in_progress: { iconName: "progress-clock",    color: "#F59E0B", label: "Đang học"   },
-  available:   { iconName: "circle-outline",   color: "#8B8178", label: "Sẵn sàng"   },
-  locked:      { iconName: "lock",             color: "#8B8178", label: "Bị khóa"    },
+const statusVisuals: Record<
+  CourseStatus,
+  { iconName: string; color: string; label: string }
+> = {
+  completed: { iconName: "check-circle", color: "#10B981", label: "Completed" },
+  in_progress: { iconName: "progress-clock", color: "#F59E0B", label: "In progress" },
+  available: { iconName: "circle-outline", color: "#8B8178", label: "Available" },
+  locked: { iconName: "lock", color: "#8B8178", label: "Locked" },
 };
 
 function deriveStatus(c: CourseItemData): CourseStatus {
   if (c.completed) return "completed";
-  if (c.prerequisites.length === 0) return "available";
-  // 'locked' is just a default for the demo — real lock logic would
-  // check whether all prereqs are completed.
   return "available";
 }
 
@@ -62,24 +61,38 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
         />
       </View>
 
-      {/* Course type icon */}
-      <CourseTypeIcon type={course.type} size={16} />
-
       {/* Title + meta */}
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-ink dark:text-ink-dark" numberOfLines={1}>
+        <Text
+          className="text-sm font-semibold text-ink dark:text-ink-dark"
+          numberOfLines={1}
+        >
           {course.name}
         </Text>
         <View className="mt-1 flex-row items-center gap-1.5">
-          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">{course.course_code}</Text>
+          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">
+            {course.code}
+          </Text>
           <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">·</Text>
-          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">{course.credits} TC</Text>
+          <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">
+            {course.credits} credits
+          </Text>
+          {course.mandatory ? (
+            <>
+              <Text className="text-xs text-ink-muted dark:text-ink-muted-dark">
+                ·
+              </Text>
+              <Text className="text-xs font-semibold text-brand-ink dark:text-brand-ink-dark">
+                Required
+              </Text>
+            </>
+          ) : null}
         </View>
       </View>
 
-      {/* Type badge */}
-      <Badge variant={courseTypeBadgeClass(course.type)} className="px-2 py-0.5">
-        {courseTypeLabel(course.type)}
+      {/* Mandatory badge */}
+      <Badge variant={course.mandatory ? "default" : "secondary"} className="px-2 py-0.5">
+        {course.mandatory ? "Required" : "Elective"}
       </Badge>
     </>
   );
@@ -92,7 +105,7 @@ export function CourseItem({ course, onPress, status }: CourseItemProps) {
     <Pressable
       onPress={() => onPress(course)}
       accessibilityRole="button"
-      accessibilityLabel={`${course.course_code} ${course.name}`}
+      accessibilityLabel={`${course.code} ${course.name}`}
       className="flex-row items-center gap-3 py-3"
     >
       {content}

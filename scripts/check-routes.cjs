@@ -4,7 +4,7 @@
  * The QA audit found deep links pointing at routes that do not exist
  * (`/(app)/messages/conv-1`, `/(app)/plan`), which silently dead-ended the
  * user. This script rebuilds the Expo Router tree from `app/` and asserts
- * that every href used in the app code and in the mock database resolves to a
+ * that every href used in the app code resolves to a
  * real screen.
  *
  * Run with: `npm run check:routes`

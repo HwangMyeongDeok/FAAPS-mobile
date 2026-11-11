@@ -26,7 +26,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Trang chủ",
+          title: "Home",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="home" size={24} color={color as string} />
           ),
@@ -35,7 +35,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="courses"
         options={{
-          title: "Môn học",
+          title: "Courses",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="book-search" size={24} color={color as string} />
           ),
@@ -44,7 +44,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="curriculum"
         options={{
-          title: "Chương trình",
+          title: "Curriculum",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="book-open" size={24} color={color as string} />
           ),
@@ -53,7 +53,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Hồ sơ",
+          title: "Profile",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="account" size={24} color={color as string} />
           ),

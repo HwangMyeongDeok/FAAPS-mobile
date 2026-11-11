@@ -1,15 +1,15 @@
 /**
- * FE-S-3 — Bảng điểm (Transcript) & Tiến độ học tập.
+ * FE-S-3 — Transcript & academic progress.
  *
- * Câu hỏi duy nhất của màn hình: "Tôi đang đứng ở đâu — điểm các kỳ ra sao,
- * còn bao nhiêu tín chỉ nữa thì tốt nghiệp, và OJT tới đâu rồi?"
+ * The screen answers one question: "Where am I standing right now — how did
+ * my semesters go, and how many credits are left until graduation?"
  *
- * Layout một tay: banner cảnh báo → hero GPA/tín chỉ → OJT → từng học kỳ
- * dạng accordion. Mọi token theo theme "mới" (ground/surface/brand-tint),
- * dark-mode đầy đủ qua `dark:` variants + inline style theo `isDark`.
+ * Layout for one hand: warning banner → hero GPA/credits → semester
+ * accordions. Every token follows the FAAPS theme (ground/surface/brand-tint)
+ * with full dark-mode support via `dark:` variants + inline styles.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -25,34 +25,30 @@ import { router } from "expo-router";
 
 import { ScreenHeader, goBack } from "@/components/ScreenHeader";
 import { Skeleton } from "@/components/ui";
-import { useMyProfile } from "@/lib/queries/profile";
+import { useMyProfile, useMyProgress } from "@/lib/queries/profile";
 import { useTranscript } from "@/lib/queries/transcript";
-import { useAuthStore } from "@/stores/auth";
-import type {
-  OjtStatus,
-  TranscriptCourseGrade,
-  TranscriptSemester,
-} from "@/lib/api/transcript";
+import type { TranscriptRow } from "@/types";
 
 const ORANGE = "#F36F21";
 const ORANGE_DEEP = "#B5460D";
 
 // ── Semantic tones ───────────────────────────────────────────────────────────
-// Probation/warning dùng hổ phách (amber) — cảnh báo nhưng không "lỗi".
-// Điểm rớt mới dùng đỏ. Điểm tốt dùng xanh lá. Tất cả có cặp light/dark.
+// Probation/warning uses amber — a warning, not an error. A failing grade
+// uses red. A good grade uses green. Every tone has a light and dark pair.
 
-function gradeTone(grade: number, isDark: boolean): { bg: string; fg: string } {
-  if (grade >= 8) {
+function gradeTone(grade: number | null, isDark: boolean): { bg: string; fg: string } {
+  const value = grade ?? 0;
+  if (value >= 8) {
     return isDark
       ? { bg: "#0B2E1F", fg: "#6EE7B7" }
       : { bg: "#DCFCE7", fg: "#047857" };
   }
-  if (grade >= 6.5) {
+  if (value >= 6.5) {
     return isDark
       ? { bg: "#2E1C0E", fg: "#FFA371" }
       : { bg: "#FFF1E7", fg: ORANGE_DEEP };
   }
-  if (grade >= 5) {
+  if (value >= 5) {
     return isDark
       ? { bg: "#3A2A0A", fg: "#FCD34D" }
       : { bg: "#FEF3C7", fg: "#92400E" };
@@ -62,104 +58,99 @@ function gradeTone(grade: number, isDark: boolean): { bg: string; fg: string } {
     : { bg: "#FEE2E2", fg: "#DC2626" };
 }
 
-const OJT_META: Record<
-  OjtStatus,
-  { label: string; icon: string; bg: string; fg: string; darkBg: string; darkFg: string }
-> = {
-  completed: {
-    label: "Đã hoàn thành",
-    icon: "check-decagram",
-    bg: "#DCFCE7",
-    fg: "#047857",
-    darkBg: "#0B2E1F",
-    darkFg: "#6EE7B7",
-  },
-  in_progress: {
-    label: "Đang thực hiện",
-    icon: "briefcase-clock-outline",
-    bg: "#FEF3C7",
-    fg: "#92400E",
-    darkBg: "#3A2A0A",
-    darkFg: "#FCD34D",
-  },
-  not_eligible: {
-    label: "Chưa đủ điều kiện",
-    icon: "briefcase-off-outline",
-    bg: "#F2EDE7",
-    fg: "#6A6058",
-    darkBg: "#241F1B",
-    darkFg: "#A79C93",
-  },
-};
+/** The semesters of the transcript, newest first, with their rows. */
+interface TranscriptSemester {
+  key: string;
+  label: string;
+  code: string;
+  rows: TranscriptRow[];
+  credits: number;
+  earnedCredits: number;
+  gpa: number | null;
+}
+
+function groupBySemester(rows: TranscriptRow[]): TranscriptSemester[] {
+  const map = new Map<string, TranscriptRow[]>();
+  for (const row of rows) {
+    const arr = map.get(row.semesterCode) ?? [];
+    arr.push(row);
+    map.set(row.semesterCode, arr);
+  }
+
+  return Array.from(map.entries()).map(([code, list]) => {
+    const credits = list.reduce((s, r) => s + r.credits, 0);
+    const earnedCredits = list.reduce((s, r) => s + (r.creditsEarned ?? 0), 0);
+    const weighted = list.reduce(
+      (s, r) => s + (r.finalScore ?? 0) * r.credits,
+      0,
+    );
+    return {
+      key: code,
+      label: list[0]?.semesterName ?? code,
+      code,
+      rows: list,
+      credits,
+      earnedCredits,
+      gpa: credits === 0 ? null : Math.round((weighted / credits) * 100) / 100,
+    };
+  });
+}
 
 export default function TranscriptScreen() {
   const isDark = useColorScheme() === "dark";
-  const userId = useAuthStore((s) => s.session?.user.id ?? null);
 
-  const { data: profile } = useMyProfile(userId);
+  const { data: profile } = useMyProfile();
+  const { data: progress } = useMyProgress();
   const {
-    data: transcript,
+    data: transcript = [],
     isLoading,
     isError,
     refetch,
     isRefetching,
   } = useTranscript();
 
-  // Mở sẵn kỳ mới nhất, các kỳ cũ thu gọn để màn hình gọn một tay.
+  // The newest semester starts open, older ones collapse so the screen stays
+  // readable on a small phone.
+  const semesters = useMemo(() => groupBySemester(transcript), [transcript]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  useEffect(() => {
-    if (transcript && Object.keys(expanded).length === 0) {
-      const init: Record<string, boolean> = {};
-      transcript.semesters.forEach((s, i) => {
-        init[s.id] = i === transcript.semesters.length - 1;
-      });
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setExpanded(init);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transcript]);
 
   const stats = useMemo(() => {
-    if (!transcript) return null;
     let attempted = 0;
-    let weighted = 0;
     let earned = 0;
     let courses = 0;
     let failed = 0;
-    for (const sem of transcript.semesters) {
-      for (const c of sem.courses) {
+    for (const sem of semesters) {
+      for (const c of sem.rows) {
         attempted += c.credits;
-        weighted += c.grade * c.credits;
         courses += 1;
-        if (c.status === "PASSED") earned += c.credits;
-        else failed += 1;
+        if (c.status === "PASSED" || c.status === "EXEMPTED") {
+          earned += c.creditsEarned ?? c.credits;
+        } else if (c.status === "FAILED") {
+          failed += 1;
+        }
       }
     }
-    return {
-      attempted,
-      earned,
-      courses,
-      failed,
-      gpa: attempted === 0 ? 0 : Math.round((weighted / attempted) * 100) / 100,
-    };
-  }, [transcript]);
+    return { attempted, earned, courses, failed };
+  }, [semesters]);
 
-  // Số liệu tốt nghiệp lấy từ hồ sơ chính thức (đồng bộ với Trang chủ),
-  // không tự tính lại từ 4 kỳ mẫu để khỏi lệch số.
+  // The graduation figures come from the official progress record, so the
+  // numbers never drift from the home screen.
   const grad = useMemo(() => {
-    if (!profile) return null;
-    const earned = profile.student.total_credits_earned;
-    const total = profile.major.total_credits;
+    const earned = progress?.earnedCredits ?? profile?.totalCreditsEarned ?? 0;
+    const total = progress?.requiredCredits ?? 0;
     const pct = total === 0 ? 0 : Math.min(100, Math.round((earned / total) * 100));
     return { earned, total, pct, left: Math.max(0, total - earned) };
-  }, [profile]);
+  }, [progress, profile]);
 
-  if (isLoading || !transcript || !stats) {
+  if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
         <ScreenHeader
-          title="Bảng điểm"
-          subtitle="Kết quả học tập & tiến độ tốt nghiệp"
+          title="Transcript"
+          subtitle="Your academic results & graduation progress"
           onBack={goBack}
         />
         <View className="px-5 pt-4">
@@ -177,36 +168,54 @@ export default function TranscriptScreen() {
 
   if (isError) {
     return (
-      <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <ScreenHeader title="Bảng điểm" subtitle="Kết quả học tập & tiến độ tốt nghiệp" onBack={goBack} />
+      <SafeAreaView
+        className="flex-1 bg-ground dark:bg-ground-dark"
+        edges={["top"]}
+      >
+        <ScreenHeader
+          title="Transcript"
+          subtitle="Your academic results & graduation progress"
+          onBack={goBack}
+        />
         <View className="flex-1 items-center justify-center px-8">
-          <MaterialCommunityIcons name="cloud-off-outline" size={44} color="#CBD5E1" />
+          <MaterialCommunityIcons
+            name="cloud-off-outline"
+            size={44}
+            color="#CBD5E1"
+          />
           <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-            Không tải được bảng điểm. Kéo xuống để thử lại.
+            Could not load your transcript. Pull down to try again.
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const onProbation = profile?.student.academic_status === "PROBATION";
-  const failedCourses = transcript.semesters.flatMap((s) =>
-    s.courses.filter((c) => c.status === "FAILED").map((c) => c.course_code),
-  );
+  const onProbation = profile?.academicStatus === "PROBATION";
+  const failedCourses = semesters
+    .flatMap((s) => s.rows.filter((c) => c.status === "FAILED"))
+    .map((c) => c.courseCode);
+  const cumulativeGpa = progress?.currentGpa ?? profile?.currentGpa ?? null;
 
   return (
-    <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
+    <SafeAreaView
+      className="flex-1 bg-ground dark:bg-ground-dark"
+      edges={["top"]}
+    >
       <ScreenHeader
-        title="Bảng điểm"
-        subtitle={`${profile?.student.student_code ?? ""} · ${profile?.curriculum_version.name ?? ""}`}
+        title="Transcript"
+        subtitle={`${profile?.studentCode ?? ""} · ${profile?.cohort ?? ""}`}
         onBack={goBack}
         right={
           <View
             className="rounded-full px-3 py-1.5"
             style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
           >
-            <Text className="text-[11px] font-bold" style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}>
-              {transcript.semesters.length} kỳ · {stats.courses} môn
+            <Text
+              className="text-[11px] font-bold"
+              style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+            >
+              {semesters.length} terms · {stats.courses} courses
             </Text>
           </View>
         }
@@ -217,10 +226,16 @@ export default function TranscriptScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 48 }}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={ORANGE} />
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => {
+              refetch();
+            }}
+            tintColor={ORANGE}
+          />
         }
       >
-        {/* ── 1. Cảnh báo học vụ — luôn đứng đầu khi bị PROBATION ── */}
+        {/* ── 1. Academic warning — always first when on probation ── */}
         {onProbation ? (
           <View className="px-5 pt-4">
             <View
@@ -235,43 +250,51 @@ export default function TranscriptScreen() {
                   className="h-11 w-11 items-center justify-center rounded-2xl"
                   style={{ backgroundColor: "#F59E0B" }}
                 >
-                  <MaterialCommunityIcons name="alert-decagram" size={22} color="#FFFFFF" />
+                  <MaterialCommunityIcons
+                    name="alert-decagram"
+                    size={22}
+                    color="#FFFFFF"
+                  />
                 </View>
                 <View className="flex-1">
                   <Text
                     className="text-sm font-bold"
                     style={{ color: isDark ? "#FCD34D" : "#92400E" }}
                   >
-                    Cảnh báo học vụ · PROBATION
+                    Academic warning · PROBATION
                   </Text>
                   <Text
                     className="mt-0.5 text-[11px] leading-4"
                     style={{ color: isDark ? "#E7C46B" : "#92600E" }}
                   >
-                    GPA kỳ Summer 2025 chỉ 5.75 do trượt {failedCourses.join(", ")}.
-                    Gặp advisor để lập kế hoạch cải thiện trước kỳ đăng ký mới.
+                    {failedCourses.length > 0
+                      ? `You did not pass ${failedCourses.join(", ")}. Meet your advisor to build a recovery plan before the next registration.`
+                      : "Your academic standing needs attention. Meet your advisor to build a recovery plan."}
                   </Text>
                 </View>
               </View>
               <Pressable
                 onPress={() => router.push("/(app)/advising")}
                 accessibilityRole="button"
-                accessibilityLabel="Trao đổi với advisor về cảnh báo học vụ"
+                accessibilityLabel="Talk to your advisor about the academic warning"
                 className="mt-3 flex-row items-center justify-center gap-2 rounded-2xl py-3 active:opacity-85"
                 style={{ backgroundColor: "#F59E0B" }}
               >
                 <MaterialCommunityIcons name="chat-outline" size={16} color="#FFFFFF" />
                 <Text className="text-[13px] font-bold text-white">
-                  Trao đổi với advisor
+                  Talk to your advisor
                 </Text>
               </Pressable>
             </View>
           </View>
         ) : null}
 
-        {/* ── 2. Hero: GPA tích lũy + tiến độ tín chỉ (flat orange) ── */}
+        {/* ── 2. Hero: cumulative GPA + credit progress (flat orange) ── */}
         <View className="px-5 pt-4">
-          <View className="overflow-hidden rounded-[28px] p-5" style={{ backgroundColor: ORANGE }}>
+          <View
+            className="overflow-hidden rounded-[28px] p-5"
+            style={{ backgroundColor: ORANGE }}
+          >
             <View
               pointerEvents="none"
               className="absolute -right-14 -top-16 h-48 w-48 rounded-full"
@@ -283,169 +306,171 @@ export default function TranscriptScreen() {
               style={{ backgroundColor: "rgba(0,0,0,0.08)" }}
             />
             <View className="flex-row items-center gap-2">
-              <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.22)" }}>
+              <View
+                className="rounded-full px-3 py-1.5"
+                style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
+              >
                 <Text className="text-[11px] font-bold text-white">
-                  Tích lũy · {stats.courses} môn
+                  Cumulative · {stats.courses} courses
                 </Text>
               </View>
-              <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.22)" }}>
+              <View
+                className="rounded-full px-3 py-1.5"
+                style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
+              >
                 <Text className="text-[11px] font-bold text-white">
-                  {stats.gpa >= 8 ? "Giỏi" : stats.gpa >= 6.5 ? "Khá" : stats.gpa >= 5 ? "Trung bình" : "Cần cố gắng"}
+                  {cumulativeGpa == null
+                    ? "No GPA yet"
+                    : cumulativeGpa >= 8
+                      ? "Excellent"
+                      : cumulativeGpa >= 6.5
+                        ? "Good"
+                        : cumulativeGpa >= 5
+                          ? "Average"
+                          : "Needs improvement"}
                 </Text>
               </View>
             </View>
 
             <View className="mt-4 flex-row items-end justify-between">
               <View>
-                <Text className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-                  GPA tích lũy
+                <Text
+                  className="text-xs font-medium"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
+                  Cumulative GPA
                 </Text>
                 <View className="flex-row items-baseline gap-1">
                   <Text className="text-[52px] font-bold leading-[56px] text-white tabular-nums">
-                    {stats.gpa.toFixed(2)}
+                    {cumulativeGpa != null ? cumulativeGpa.toFixed(2) : "—"}
                   </Text>
-                  <Text className="text-base font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+                  <Text
+                    className="text-base font-medium"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
                     / 10
                   </Text>
                 </View>
               </View>
               <View className="items-end pb-1">
                 <Text className="text-2xl font-bold text-white tabular-nums">
-                  {grad?.earned ?? stats.earned}
-                  <Text className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
-                    /{grad?.total ?? 150}
+                  {grad.earned}
+                  <Text
+                    className="text-sm font-medium"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    /{grad.total}
                   </Text>
                 </Text>
-                <Text className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-                  tín chỉ đã tích lũy
+                <Text
+                  className="text-[11px] font-medium"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                >
+                  credits earned
                 </Text>
               </View>
             </View>
 
-            <View className="mt-3 h-2.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.3)" }}>
-              <View className="h-full rounded-full bg-white" style={{ width: `${grad?.pct ?? 0}%` }} />
+            <View
+              className="mt-3 h-2.5 w-full overflow-hidden rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
+            >
+              <View
+                className="h-full rounded-full bg-white"
+                style={{ width: `${grad.pct}%` }}
+              />
             </View>
-            <Text className="mt-2 text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.9)" }}>
-              Hoàn thành {grad?.pct ?? 0}% · còn {grad?.left ?? 0} tín chỉ nữa tốt nghiệp
+            <Text
+              className="mt-2 text-[11px] font-medium"
+              style={{ color: "rgba(255,255,255,0.9)" }}
+            >
+              {grad.pct}% completed · {grad.left} credits left to graduate
             </Text>
           </View>
         </View>
 
-        {/* ── 3. OJT — widget trạng thái thực tập ── */}
-        <View className="px-5 pt-4">
-          <OjtCard isDark={isDark} />
-        </View>
+        {/* ── 3. Semester overview ── */}
+        {progress && progress.semesters.length > 0 ? (
+          <View className="px-5 pt-4">
+            <View className="rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
+              <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
+                Semester overview
+              </Text>
+              <View className="mt-3 gap-2.5">
+                {progress.semesters.map((s) => (
+                  <View
+                    key={s.code}
+                    className="flex-row items-center justify-between"
+                  >
+                    <View className="flex-1">
+                      <Text className="text-xs font-semibold text-ink dark:text-ink-dark">
+                        {s.name}
+                      </Text>
+                      <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
+                        {s.creditsEarned}/{s.creditsEnrolled} credits
+                      </Text>
+                    </View>
+                    <Text className="text-[13px] font-bold tabular-nums text-ink dark:text-ink-dark">
+                      {s.semesterGpa != null ? s.semesterGpa.toFixed(2) : "—"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        ) : null}
 
-        {/* ── 4. Bảng điểm từng kỳ ── */}
+        {/* ── 4. Transcript by semester ── */}
         <View className="px-5 pt-6">
           <View className="flex-row items-end justify-between">
             <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-              Điểm theo học kỳ
+              Results by semester
             </Text>
             {stats.failed > 0 ? (
               <Text className="text-[11px] font-bold" style={{ color: "#DC2626" }}>
-                {stats.failed} môn chưa đạt
+                {stats.failed} not passed
               </Text>
             ) : null}
           </View>
 
-          <View className="mt-3 gap-3">
-            {transcript.semesters.map((sem) => (
-              <SemesterCard
-                key={sem.id}
-                semester={sem}
-                isDark={isDark}
-                open={!!expanded[sem.id]}
-                onToggle={() => setExpanded((p) => ({ ...p, [sem.id]: !p[sem.id] }))}
+          {semesters.length === 0 ? (
+            <View className="mt-3 items-center rounded-3xl border border-dashed border-line bg-surface px-6 py-8 dark:border-line-dark dark:bg-surface-dark">
+              <MaterialCommunityIcons
+                name="file-document-outline"
+                size={36}
+                color="#CBD5E1"
               />
-            ))}
-          </View>
+              <Text className="mt-3 text-sm font-bold text-ink dark:text-ink-dark">
+                No results yet
+              </Text>
+              <Text className="mt-1 text-center text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
+                Your transcript will appear here once your first semester is
+                graded.
+              </Text>
+            </View>
+          ) : (
+            <View className="mt-3 gap-3">
+              {semesters.map((sem, index) => (
+                <SemesterCard
+                  key={sem.key}
+                  semester={sem}
+                  isDark={isDark}
+                  open={expanded[sem.key] ?? index === 0}
+                  onToggle={() =>
+                    setExpanded((p) => ({ ...p, [sem.key]: !(p[sem.key] ?? index === 0) }))
+                  }
+                />
+              ))}
+            </View>
+          )}
 
           <Text className="mt-4 text-center text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-            Điểm thang 10 · Môn dưới 5.00 được tính là chưa đạt và phải học lại
+            Scores are on a 10-point scale · a course below 5.00 is not passed
+            and must be retaken
           </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-// ── OJT ──────────────────────────────────────────────────────────────────────
-
-function OjtCard({ isDark }: { isDark: boolean }) {
-  const { data: transcript } = useTranscript();
-  const ojt = transcript?.ojt;
-  if (!ojt) return null;
-  const meta = OJT_META[ojt.status];
-
-  return (
-    <View className="rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark">
-      <View className="flex-row items-center gap-3">
-        <View
-          className="h-11 w-11 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: isDark ? meta.darkBg : meta.bg }}
-        >
-          <MaterialCommunityIcons
-            name={meta.icon as any}
-            size={22}
-            color={isDark ? meta.darkFg : meta.fg}
-          />
-        </View>
-        <View className="flex-1">
-          <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-            Thực tập tốt nghiệp (OJT)
-          </Text>
-          <Text className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark" numberOfLines={1}>
-            {ojt.course_code} · {ojt.course_name}
-          </Text>
-        </View>
-        <View
-          className="rounded-full px-3 py-1.5"
-          style={{ backgroundColor: isDark ? meta.darkBg : meta.bg }}
-        >
-          <Text className="text-[11px] font-bold" style={{ color: isDark ? meta.darkFg : meta.fg }}>
-            {meta.label}
-          </Text>
-        </View>
-      </View>
-
-      <View className="mt-3 rounded-2xl bg-raised p-3 dark:bg-raised-dark">
-        {ojt.company ? (
-          <View className="flex-row items-center gap-2">
-            <MaterialCommunityIcons name="office-building-outline" size={15} color={isDark ? "#A79C93" : "#6A6058"} />
-            <Text className="flex-1 text-xs font-semibold text-ink dark:text-ink-dark" numberOfLines={1}>
-              {ojt.company}
-            </Text>
-          </View>
-        ) : null}
-        {ojt.mentor ? (
-          <View className="mt-1.5 flex-row items-center gap-2">
-            <MaterialCommunityIcons name="account-tie-outline" size={15} color={isDark ? "#A79C93" : "#6A6058"} />
-            <Text className="flex-1 text-xs text-ink-muted dark:text-ink-muted-dark" numberOfLines={1}>
-              {ojt.mentor}
-            </Text>
-          </View>
-        ) : null}
-        <Text className="mt-1.5 text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-          {ojt.note}
-        </Text>
-        {ojt.status === "in_progress" && typeof ojt.progress_pct === "number" ? (
-          <View className="mt-2.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-[11px] font-bold" style={{ color: ORANGE_DEEP }}>
-                Tiến độ thực tập
-              </Text>
-              <Text className="text-[11px] font-bold tabular-nums" style={{ color: ORANGE_DEEP }}>
-                {ojt.progress_pct}%
-              </Text>
-            </View>
-            <View className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-line dark:bg-line-dark">
-              <View className="h-full rounded-full" style={{ width: `${ojt.progress_pct}%`, backgroundColor: ORANGE }} />
-            </View>
-          </View>
-        ) : null}
-      </View>
-    </View>
   );
 }
 
@@ -462,15 +487,14 @@ function SemesterCard({
   open: boolean;
   onToggle: () => void;
 }) {
-  const credits = semester.courses.reduce((s, c) => s + c.credits, 0);
-  const tone = gradeTone(semester.term_gpa, isDark);
+  const tone = gradeTone(semester.gpa, isDark);
 
   return (
     <View className="overflow-hidden rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
       <Pressable
         onPress={onToggle}
         accessibilityRole="button"
-        accessibilityLabel={`${open ? "Thu gọn" : "Mở"} bảng điểm ${semester.label}`}
+        accessibilityLabel={`${open ? "Collapse" : "Expand"} ${semester.label} results`}
         className="flex-row items-center gap-3 p-4 active:opacity-80"
       >
         <View
@@ -488,12 +512,15 @@ function SemesterCard({
             {semester.label}
           </Text>
           <Text className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark">
-            {semester.courses.length} môn · {credits} tín chỉ
+            {semester.rows.length} courses · {semester.credits} credits
           </Text>
         </View>
         <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: tone.bg }}>
-          <Text className="text-[12px] font-bold tabular-nums" style={{ color: tone.fg }}>
-            {semester.term_gpa.toFixed(2)}
+          <Text
+            className="text-[12px] font-bold tabular-nums"
+            style={{ color: tone.fg }}
+          >
+            {semester.gpa != null ? semester.gpa.toFixed(2) : "—"}
           </Text>
         </View>
         <MaterialCommunityIcons
@@ -506,20 +533,23 @@ function SemesterCard({
       {open ? (
         <View className="px-4 pb-2">
           <View className="h-px bg-rule dark:bg-rule-dark" />
-          {semester.courses.map((c, i) => (
+          {semester.rows.map((c, i) => (
             <CourseRow
-              key={c.course_code}
+              key={c.id}
               course={c}
               isDark={isDark}
-              last={i === semester.courses.length - 1}
+              last={i === semester.rows.length - 1}
             />
           ))}
           <View className="flex-row items-center justify-between py-3">
             <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-              GPA kỳ {semester.label}
+              Semester GPA · {semester.label}
             </Text>
-            <Text className="text-[13px] font-bold tabular-nums" style={{ color: tone.fg }}>
-              {semester.term_gpa.toFixed(2)}
+            <Text
+              className="text-[13px] font-bold tabular-nums"
+              style={{ color: tone.fg }}
+            >
+              {semester.gpa != null ? semester.gpa.toFixed(2) : "—"}
             </Text>
           </View>
         </View>
@@ -533,11 +563,11 @@ function CourseRow({
   isDark,
   last,
 }: {
-  course: TranscriptCourseGrade;
+  course: TranscriptRow;
   isDark: boolean;
   last: boolean;
 }) {
-  const tone = gradeTone(course.grade, isDark);
+  const tone = gradeTone(course.finalScore, isDark);
   const failed = course.status === "FAILED";
 
   return (
@@ -547,12 +577,22 @@ function CourseRow({
       <View className="flex-1">
         <View className="flex-row items-center gap-2">
           <Text className="text-[13px] font-bold text-ink dark:text-ink-dark tabular-nums">
-            {course.course_code}
+            {course.courseCode}
           </Text>
           {failed ? (
-            <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: tone.bg }}>
+            <View
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: tone.bg }}
+            >
               <Text className="text-[10px] font-bold" style={{ color: tone.fg }}>
-                Rớt
+                FAILED
+              </Text>
+            </View>
+          ) : null}
+          {course.attemptNumber > 1 ? (
+            <View className="rounded-full bg-raised px-2 py-0.5 dark:bg-raised-dark">
+              <Text className="text-[10px] font-bold text-ink-muted dark:text-ink-muted-dark">
+                Attempt {course.attemptNumber}
               </Text>
             </View>
           ) : null}
@@ -561,18 +601,21 @@ function CourseRow({
           className="mt-0.5 text-[12px] leading-4 text-ink-muted dark:text-ink-muted-dark"
           numberOfLines={2}
         >
-          {course.course_name}
+          {course.courseName}
         </Text>
         <Text className="mt-0.5 text-[11px] text-ink-faint dark:text-ink-faint-dark tabular-nums">
-          {course.credits} tín chỉ
+          {course.credits} credits
         </Text>
       </View>
       <View
         className="min-w-[56px] items-center rounded-2xl px-2.5 py-2"
         style={{ backgroundColor: tone.bg }}
       >
-        <Text className="text-[15px] font-bold tabular-nums" style={{ color: tone.fg }}>
-          {course.grade.toFixed(1)}
+        <Text
+          className="text-[15px] font-bold tabular-nums"
+          style={{ color: tone.fg }}
+        >
+          {course.finalScore != null ? course.finalScore.toFixed(1) : "—"}
         </Text>
       </View>
     </View>

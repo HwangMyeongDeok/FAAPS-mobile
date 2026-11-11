@@ -1,5 +1,5 @@
 /**
- * FE-S-9 — Trợ lý học tập AI (AI Academic Assistant · chat).
+ * FE-S-9 — AI Academic Assistant (chat).
  *
  * ── Direction ───────────────────────────────────────────────────────────────
  * Style: framed-sheet (app), mapped onto the FPT brand tokens already in
@@ -7,9 +7,9 @@
  * surfaces with a single hairline edge, no shadows at rest, one orange
  * reserved for the data and the single primary action.
  *
- * The screen's one question: "AI nói gì về chương trình của tôi, và tôi
- * tin nó dựa trên tài liệu nào?" — so the biggest thing after the title is
- * the answer, and every answer carries its sources.
+ * The screen's one question: "What does the AI say about my programme, and
+ * which document does it base that on?" — so the biggest thing after the
+ * title is the answer, and every answer carries its sources.
  *
  * ── Design notes ────────────────────────────────────────────────────────────
  * • One accent hue (FPT orange #F36F21). Colour appears on the assistant's
@@ -18,7 +18,7 @@
  *   the left on white. That is the only structural difference between the
  *   two sides, so the thread reads at a glance.
  * • Sources are the trust surface: numbered badges that expand into the
- *   actual document, the clause, and the line the answer leaned on.
+ *   actual document and the passage the answer leaned on.
  * • No gradients, no glass, no emoji, no icon in a tinted square.
  */
 
@@ -42,45 +42,49 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 import { goBack } from "@/components/ScreenHeader";
-import { useAiPrompts, useAiThread, useRateAiMessage, useSendAiMessage } from "@/lib/queries/ai";
-import { useAuthStore } from "@/stores/auth";
-import type { AiChatMessage, AiSource } from "@/types/ai";
+import {
+  useAiConversations,
+  useAiMessages,
+  useCreateAiConversation,
+  useRateAiMessage,
+  useSendAiMessage,
+} from "@/lib/queries/ai";
+import { AI_PROMPT_SUGGESTIONS } from "@/lib/api/ai";
+import type { AiChatMessage, AiChatSource } from "@/types/ai";
 
 const ORANGE = "#F36F21";
 const ORANGE_DEEP = "#B5460D";
 
-/** Label for each kind of cited document. */
-const SOURCE_KIND_LABEL: Record<AiSource["kind"], string> = {
-  curriculum: "Chương trình khung",
-  syllabus: "Syllabus",
-  regulation: "Quy chế",
-  advisor: "Cố vấn",
-};
-
 export default function AiChatScreen() {
   const isDark = useColorScheme() === "dark";
-  const userId = useAuthStore((s) => s.session?.user.id ?? null);
 
-  const { data: thread, isLoading } = useAiThread(userId);
-  const { data: suggestions = [] } = useAiPrompts();
-  const send = useSendAiMessage(userId);
-  const rate = useRateAiMessage(userId);
+  const { data: conversations = [] } = useAiConversations();
+  const createConversation = useCreateAiConversation();
+
+  // The active thread: the most recent conversation, or a freshly created one.
+  const [conversationId, setConversationId] = useState<string | null>(
+    conversations[0]?.id ?? null,
+  );
+
+  const { data: serverMessages = [], isLoading } = useAiMessages(conversationId);
+  const send = useSendAiMessage();
+  const rate = useRateAiMessage();
 
   // The live thread. Seeded from the server thread, then owned by this
-  // screen so a sent message appears instantly. The seed is applied during
-  // render (the "adjust state when a prop changes" pattern) rather than in
-  // an effect, so the first paint is never an empty thread.
-  const [seedThread, setSeedThread] = useState(thread);
-  const [messages, setMessages] = useState<AiChatMessage[]>(thread?.messages ?? []);
+  // screen so a sent message appears instantly.
+  const [messages, setMessages] = useState<AiChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
 
   const scrollRef = useRef<ScrollViewInstance>(null);
   const isThinking = send.isPending;
 
-  if (thread && thread !== seedThread) {
-    setSeedThread(thread);
-    setMessages(thread.messages);
+  // Adopt the server thread whenever it changes (first load, or a refetch).
+  // Syncing during render (rather than in an effect) avoids the extra pass.
+  const [syncedThread, setSyncedThread] = useState(serverMessages);
+  if (syncedThread !== serverMessages) {
+    setSyncedThread(serverMessages);
+    setMessages(serverMessages);
   }
 
   const scrollToEnd = useCallback(() => {
@@ -93,51 +97,73 @@ export default function AiChatScreen() {
     scrollToEnd();
   }, [messages.length, isThinking, scrollToEnd]);
 
+  const ensureConversation = useCallback(async () => {
+    if (conversationId) return conversationId;
+    const created = await createConversation.mutateAsync();
+    setConversationId(created.id);
+    return created.id;
+  }, [conversationId, createConversation]);
+
   const onSend = useCallback(
-    (question: string) => {
+    async (question: string) => {
       const content = question.trim();
       if (!content || isThinking) return;
 
       const userMessage: AiChatMessage = {
         id: `local-${Date.now()}`,
-        role: "user",
+        conversationId: conversationId ?? "",
+        sender: "USER",
         content,
-        sent_at: new Date().toISOString(),
+        questionCategory: null,
+        isUnsupported: false,
+        isFallback: false,
+        confidenceScore: null,
+        sources: [],
+        wasHelpful: null,
+        feedback: null,
+        createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMessage]);
       setDraft("");
       scrollToEnd();
 
-      send.mutate(content, {
-        onSuccess: (answer) => {
-          setMessages((prev) => [...prev, answer]);
-          scrollToEnd();
-        },
-        onError: () => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `err-${Date.now()}`,
-              role: "assistant",
-              content:
-                "Không gửi được câu hỏi lúc này. Kiểm tra kết nối rồi thử lại nhé.",
-              sent_at: new Date().toISOString(),
-            },
-          ]);
-        },
-      });
+      try {
+        const id = await ensureConversation();
+        const answer = await send.mutateAsync({ conversationId: id, content });
+        setMessages((prev) => [...prev, answer.assistantMessage]);
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            conversationId: conversationId ?? "",
+            sender: "ASSISTANT",
+            content:
+              "The question could not be sent right now. Check your connection and try again.",
+            questionCategory: null,
+            isUnsupported: false,
+            isFallback: true,
+            confidenceScore: null,
+            sources: [],
+            wasHelpful: null,
+            feedback: null,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
+      scrollToEnd();
     },
-    [isThinking, send, scrollToEnd],
+    [conversationId, ensureConversation, isThinking, scrollToEnd, send],
   );
 
   const onRate = useCallback(
-    (messageId: string, value: "up" | "down") => {
+    (messageId: string, wasHelpful: boolean) => {
       setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, rating: value } : m)),
+        prev.map((m) => (m.id === messageId ? { ...m, wasHelpful } : m)),
       );
-      if (userId) rate.mutate({ messageId, rating: value });
+      rate.mutate({ messageId, wasHelpful });
     },
-    [rate, userId],
+    [rate],
   );
 
   const toggleSources = useCallback((messageId: string) => {
@@ -145,8 +171,8 @@ export default function AiChatScreen() {
   }, []);
 
   const showSuggestions = useMemo(
-    () => messages.length === 0 && suggestions.length > 0,
-    [messages.length, suggestions.length],
+    () => messages.length === 0 && AI_PROMPT_SUGGESTIONS.length > 0,
+    [messages.length],
   );
 
   return (
@@ -157,7 +183,7 @@ export default function AiChatScreen() {
           <Pressable
             onPress={goBack}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
             hitSlop={10}
             className="-ml-1 h-10 w-10 items-center justify-center rounded-full active:opacity-70"
           >
@@ -172,7 +198,11 @@ export default function AiChatScreen() {
             className="h-9 w-9 items-center justify-center rounded-full"
             style={{ backgroundColor: ORANGE }}
           >
-            <MaterialCommunityIcons name="school-outline" size={19} color="#FFFFFF" />
+            <MaterialCommunityIcons
+              name="school-outline"
+              size={19}
+              color="#FFFFFF"
+            />
           </View>
 
           <View className="flex-1">
@@ -180,17 +210,17 @@ export default function AiChatScreen() {
               accessibilityRole="header"
               className="text-[17px] font-bold text-ink dark:text-ink-dark"
             >
-              Trợ lý học tập AI
+              AI Academic Assistant
             </Text>
             <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
-              Trả lời theo chương trình K19 · có dẫn nguồn
+              Grounded in your curriculum · with citations
             </Text>
           </View>
 
           <Pressable
             onPress={() => router.push("/(app)/ai-roadmap")}
             accessibilityRole="button"
-            accessibilityLabel="Xem lộ trình AI gợi ý"
+            accessibilityLabel="View the AI study roadmap"
             hitSlop={8}
             className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
             style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
@@ -206,7 +236,6 @@ export default function AiChatScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         className="flex-1"
       >
         {/* ── Thread ────────────────────────────────────────────────────── */}
@@ -258,10 +287,10 @@ export default function AiChatScreen() {
           {showSuggestions && !isThinking ? (
             <View className="mt-5">
               <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
-                Bạn có thể hỏi
+                You can ask
               </Text>
               <View className="mt-2.5 gap-2">
-                {suggestions.map((s) => (
+                {AI_PROMPT_SUGGESTIONS.map((s) => (
                   <Pressable
                     key={s.id}
                     onPress={() => onSend(s.prompt)}
@@ -285,7 +314,8 @@ export default function AiChatScreen() {
 
           {messages.length > 0 ? (
             <Text className="mt-6 text-center text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-              Trợ lý AI có thể nhầm. Kiểm tra nguồn trích dẫn trước khi đăng ký môn.
+              The AI can make mistakes. Check the cited sources before you
+              register for courses.
             </Text>
           ) : null}
         </ScrollView>
@@ -296,13 +326,13 @@ export default function AiChatScreen() {
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder="Hỏi về chương trình học…"
+              placeholder="Ask about your programme…"
               placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
               multiline
               editable={!isThinking}
               returnKeyType="send"
               onSubmitEditing={() => onSend(draft)}
-              accessibilityLabel="Nhập câu hỏi cho trợ lý AI"
+              accessibilityLabel="Type your question for the AI assistant"
               className="max-h-[120px] flex-1 rounded-2xl border border-line px-4 py-3 text-[14px] leading-5 text-ink dark:border-line-dark dark:text-ink-dark"
               style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
             />
@@ -310,10 +340,14 @@ export default function AiChatScreen() {
               onPress={() => onSend(draft)}
               disabled={!draft.trim() || isThinking}
               accessibilityRole="button"
-              accessibilityLabel="Gửi câu hỏi"
+              accessibilityLabel="Send the question"
               className="h-11 w-11 items-center justify-center rounded-full active:opacity-80"
               style={{
-                backgroundColor: draft.trim() ? ORANGE : isDark ? "#302A24" : "#E4DCD3",
+                backgroundColor: draft.trim()
+                  ? ORANGE
+                  : isDark
+                    ? "#302A24"
+                    : "#E4DCD3",
               }}
             >
               {isThinking ? (
@@ -337,14 +371,18 @@ function EmptyState() {
   return (
     <View className="items-center px-4 pt-12">
       <View className="h-16 w-16 items-center justify-center rounded-full bg-brand-tint dark:bg-brand-tint-dark">
-        <MaterialCommunityIcons name="robot-happy-outline" size={30} color={ORANGE_DEEP} />
+        <MaterialCommunityIcons
+          name="robot-happy-outline"
+          size={30}
+          color={ORANGE_DEEP}
+        />
       </View>
       <Text className="mt-4 text-center text-[15px] font-bold text-ink dark:text-ink-dark">
-        Hỏi bất cứ điều gì về chương trình học
+        Ask anything about your programme
       </Text>
       <Text className="mt-1.5 text-center text-[13px] leading-5 text-ink-muted dark:text-ink-muted-dark">
-        Trợ lý đọc chương trình khung K19, quy chế đào tạo và syllabus — rồi
-        trả lời kèm nguồn để bạn kiểm chứng.
+        The assistant reads your curriculum, the academic regulations and the
+        course syllabi — then answers with sources you can verify.
       </Text>
     </View>
   );
@@ -363,9 +401,9 @@ function MessageBlock({
   isDark: boolean;
   sourcesOpen: boolean;
   onToggleSources: () => void;
-  onRate: (messageId: string, value: "up" | "down") => void;
+  onRate: (messageId: string, wasHelpful: boolean) => void;
 }) {
-  const mine = message.role === "user";
+  const mine = message.sender === "USER";
 
   if (mine) {
     return (
@@ -387,7 +425,11 @@ function MessageBlock({
         className="mt-0.5 h-8 w-8 items-center justify-center rounded-full"
         style={{ backgroundColor: ORANGE }}
       >
-        <MaterialCommunityIcons name="school-outline" size={17} color="#FFFFFF" />
+        <MaterialCommunityIcons
+          name="school-outline"
+          size={17}
+          color="#FFFFFF"
+        />
       </View>
 
       <View className="flex-1">
@@ -399,6 +441,11 @@ function MessageBlock({
           <Text className="text-[14px] leading-[21px] text-ink dark:text-ink-dark">
             {message.content}
           </Text>
+          {message.isUnsupported ? (
+            <Text className="mt-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+              This question could not be answered from the available documents.
+            </Text>
+          ) : null}
         </View>
 
         {/* Sources — the trust surface. */}
@@ -408,7 +455,7 @@ function MessageBlock({
               onPress={onToggleSources}
               accessibilityRole="button"
               accessibilityLabel={
-                sourcesOpen ? "Ẩn nguồn trích dẫn" : "Xem nguồn trích dẫn"
+                sourcesOpen ? "Hide citations" : "Show citations"
               }
               className="flex-row items-center gap-1.5 self-start rounded-lg py-1 active:opacity-70"
             >
@@ -421,7 +468,8 @@ function MessageBlock({
                 className="text-[12px] font-bold"
                 style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
               >
-                {message.sources.length} nguồn
+                {message.sources.length} source
+                {message.sources.length === 1 ? "" : "s"}
               </Text>
               <MaterialCommunityIcons
                 name={sourcesOpen ? "chevron-up" : "chevron-down"}
@@ -432,8 +480,13 @@ function MessageBlock({
 
             {sourcesOpen ? (
               <View className="mt-1.5 gap-2">
-                {message.sources.map((source) => (
-                  <SourceCard key={source.index} source={source} isDark={isDark} />
+                {message.sources.map((source, index) => (
+                  <SourceCard
+                    key={source.chunkId || index}
+                    source={source}
+                    index={index}
+                    isDark={isDark}
+                  />
                 ))}
               </View>
             ) : null}
@@ -443,23 +496,23 @@ function MessageBlock({
         {/* Rating — only on answers. */}
         <View className="mt-2 flex-row items-center gap-1">
           <Text className="mr-1 text-[11px] text-ink-faint dark:text-ink-faint-dark">
-            Câu trả lời này có ích không?
+            Was this helpful?
           </Text>
           <RatingButton
             icon="thumb-up-outline"
             activeIcon="thumb-up"
-            active={message.rating === "up"}
-            label="Câu trả lời hữu ích"
+            active={message.wasHelpful === true}
+            label="Helpful answer"
             isDark={isDark}
-            onPress={() => onRate(message.id, "up")}
+            onPress={() => onRate(message.id, true)}
           />
           <RatingButton
             icon="thumb-down-outline"
             activeIcon="thumb-down"
-            active={message.rating === "down"}
-            label="Câu trả lời chưa hữu ích"
+            active={message.wasHelpful === false}
+            label="Not a helpful answer"
             isDark={isDark}
-            onPress={() => onRate(message.id, "down")}
+            onPress={() => onRate(message.id, false)}
           />
         </View>
       </View>
@@ -469,7 +522,15 @@ function MessageBlock({
 
 // ── One cited source ────────────────────────────────────────────────────────
 
-function SourceCard({ source, isDark }: { source: AiSource; isDark: boolean }) {
+function SourceCard({
+  source,
+  index,
+  isDark,
+}: {
+  source: AiChatSource;
+  index: number;
+  isDark: boolean;
+}) {
   return (
     <View
       className="rounded-xl border border-line bg-raised px-3 py-2.5 dark:border-line-dark dark:bg-raised-dark"
@@ -483,22 +544,24 @@ function SourceCard({ source, isDark }: { source: AiSource; isDark: boolean }) {
             className="text-[11px] font-bold tabular-nums"
             style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
           >
-            {source.index}
+            {index + 1}
           </Text>
         </View>
 
         <View className="flex-1">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="flex-1 text-[12px] font-bold text-ink dark:text-ink-dark">
-              {source.title}
+          <Text className="flex-1 text-[12px] font-bold text-ink dark:text-ink-dark">
+            {source.documentTitle}
+          </Text>
+          {source.sectionTitle ? (
+            <Text className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark">
+              {source.sectionTitle}
             </Text>
-          </View>
-          <Text className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark">
-            {SOURCE_KIND_LABEL[source.kind]} · {source.locator}
-          </Text>
-          <Text className="mt-1.5 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
-            {source.excerpt}
-          </Text>
+          ) : null}
+          {source.quotedText ? (
+            <Text className="mt-1.5 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
+              {source.quotedText}
+            </Text>
+          ) : null}
         </View>
       </View>
     </View>
@@ -543,7 +606,9 @@ function RatingButton({
       <MaterialCommunityIcons
         name={(active ? activeIcon : icon) as any}
         size={15}
-        color={active ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#A79C93" : "#8B8178"}
+        color={
+          active ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#A79C93" : "#8B8178"
+        }
       />
     </Pressable>
   );
@@ -595,7 +660,11 @@ function TypingIndicator({ isDark }: { isDark: boolean }) {
         className="mt-0.5 h-8 w-8 items-center justify-center rounded-full"
         style={{ backgroundColor: ORANGE }}
       >
-        <MaterialCommunityIcons name="school-outline" size={17} color="#FFFFFF" />
+        <MaterialCommunityIcons
+          name="school-outline"
+          size={17}
+          color="#FFFFFF"
+        />
       </View>
 
       <View
@@ -610,7 +679,10 @@ function TypingIndicator({ isDark }: { isDark: boolean }) {
               height: 7,
               borderRadius: 4,
               backgroundColor: isDark ? "#A79C93" : "#C3B8AD",
-              opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+              opacity: dot.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.35, 1],
+              }),
               transform: [
                 {
                   translateY: dot.interpolate({
@@ -623,7 +695,7 @@ function TypingIndicator({ isDark }: { isDark: boolean }) {
           />
         ))}
         <Text className="ml-1.5 text-[12px] text-ink-muted dark:text-ink-muted-dark">
-          AI đang trả lời…
+          The AI is answering…
         </Text>
       </View>
     </View>

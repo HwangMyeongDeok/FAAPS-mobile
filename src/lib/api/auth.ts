@@ -1,70 +1,57 @@
 /**
- * Auth service — sign in / sign out / session refresh.
+ * Auth service — sign in / sign out / session bootstrap.
  *
- * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
- * `config.isMockMode` decides which branch runs. To wire the real backend:
- *   1. Set `extra.isMockMode = false` (and `apiBaseUrl`) in app.json, or
- *      `EXPO_PUBLIC_MOCK_MODE=false` in .env
- *   2. The `else` branch below already contains the real calls.
+ * The backend authenticates with an HTTP session (`JSESSIONID`) plus a
+ * refresh cookie. Everything here therefore relies on the platform cookie
+ * jar; there is no token to attach to requests.
  */
-import type { AuthSession, User } from "@/types";
-import { config } from "@/config/api";
-import { http } from "@/lib/http";
-import { getAuthToken, SESSIONS_KEY } from "@/lib/api/token";
-import { mockDelay } from "@/lib/db/mockDelay";
-import { mockUsers, mockStudents } from "@/lib/db/mockDb";
-
-export { SESSIONS_KEY };
+import { clearCsrfToken, http } from "@/lib/http";
+import { clearSession } from "@/lib/api/token";
+import type { AuthCredentials, AuthSession } from "@/types";
 
 /**
- * Sign in with Google.
+ * Sign in with an FPT email address and a password.
  *
- * Mock: picks the "u-student-duc" account so the demo always has consistent
- * data. Real: exchanges a Google ID token with the backend.
- *
- * @param googleIdToken ID token obtained from Google Sign-In. In mock mode
- *   this argument is ignored.
+ * The backend responds with the `AuthSession` and sets the session cookies.
  */
-export async function signInWithGoogle(googleIdToken?: string): Promise<AuthSession> {
-  if (config.isMockMode) {
-    await mockDelay();
-    const user = mockUsers.find((u) => u.id === "u-student-duc")!;
-    const student = mockStudents.find((s) => s.user_id === user.id)!;
-    return {
-      token: `mock.jwt.${user.id}.${Date.now()}`,
-      user,
-      student_code: student.student_code,
-    };
-  }
-
-  // TODO: Wire BE later — pass the real Google ID token from expo-auth-session
-  // so the backend can verify it and issue a FAAPS session.
-  if (!googleIdToken) {
-    throw new Error("Google ID token is required when EXPO_PUBLIC_MOCK_MODE=false.");
-  }
-  return http.post<AuthSession>("/api/auth/google", { idToken: googleIdToken });
+export async function signIn(credentials: AuthCredentials): Promise<AuthSession> {
+  const session = await http.post<AuthSession>("/api/auth/login", {
+    email: credentials.email,
+    password: credentials.password,
+  });
+  return session;
 }
 
+/** Sign out — invalidates the server session and clears the cookies. */
 export async function signOut(): Promise<void> {
-  if (config.isMockMode) {
-    await mockDelay(300);
-    return;
+  try {
+    await http.post<void>("/api/auth/logout");
+  } catch {
+    /* the local session is dropped either way */
   }
-
-  // TODO: Wire BE later
-  const token = await getAuthToken();
-  await http.post<void>("/api/auth/logout", undefined, { token });
+  clearCsrfToken();
+  await clearSession();
 }
 
-export async function refreshSession(token: string): Promise<User | null> {
-  if (config.isMockMode) {
-    await mockDelay(300);
-    const match = mockUsers.find(
-      (u) => `mock.jwt.${u.id}` === token.slice(0, token.lastIndexOf(".")),
-    );
-    return match ?? null;
+/** The current session, or null when the cookie has expired. */
+export async function getCurrentSession(): Promise<AuthSession | null> {
+  try {
+    return await http.get<AuthSession>("/api/auth/me");
+  } catch {
+    return null;
   }
+}
 
-  // TODO: Wire BE later
-  return http.get<User>("/api/auth/me", { token });
+/**
+ * Restore the session from the refresh cookie after the app was closed.
+ * Returns null when the refresh token is gone or expired.
+ */
+export async function restoreSession(): Promise<AuthSession | null> {
+  try {
+    return await http.post<AuthSession>("/api/auth/refresh", undefined, {
+      skipRefresh: true,
+    });
+  } catch {
+    return null;
+  }
 }

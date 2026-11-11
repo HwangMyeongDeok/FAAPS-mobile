@@ -1,80 +1,41 @@
 /**
- * Course domain types (mirrors DB `courses` + `course_prerequisites` tables).
+ * Course domain types — mirrors the backend `courses` / `course_prerequisites`
+ * tables and the `StudentAcademicService` records.
  */
 
-// ── Course types ──────────────────────────────────────────────────────────────
-
-export type CourseCategory =
-  | "FUNDAMENTAL"
-  | "CORE"
-  | "ELECTIVE"
-  | "PRACTICUM"
-  | "PROJECT"
-  | "OTHER";
-
+/** `StudentAcademicService.Course` */
 export interface Course {
   id: string;
-  /** Unique course code, e.g. "PRM201" */
   code: string;
   name: string;
   credits: number;
-  category: CourseCategory;
-  /** Short description / syllabus summary */
-  description?: string | null;
-  /** Learning objectives */
-  objectives?: string | null;
-  /** Expected learning outcomes */
-  learning_outcomes?: string | null;
-  status: "ACTIVE" | "INACTIVE";
-  created_at: string;
-  updated_at: string;
+  /** The category *name* from `course_categories`, e.g. "Core Courses". */
+  category: string;
+  description: string | null;
+  objectives: string | null;
+  learningOutcomes: string | null;
 }
 
-// ── Prerequisite types ────────────────────────────────────────────────────────
-
-export type PrerequisiteType = "PREREQUISITE" | "CO_REQUISITE";
-
-/**
- * A prerequisite rule for a course.
- * - Rows with the same `group_no` are **alternatives** (OR).
- * - Rows with different `group_no` are **all required** (AND).
- *
- * Example: `(A OR B) AND C` → A:group=1, B:group=1, C:group=2
- */
+/** `StudentAcademicService.Prerequisite` */
 export interface CoursePrerequisite {
   id: string;
-  course_id: string;
-  prerequisite_course: Course;
-  /** Group number for OR/AND logic */
-  group_no: number;
-  type: PrerequisiteType;
-  /** Minimum score (10-point scale) to satisfy, e.g. 5.00 */
-  minimum_score?: number | null;
+  courseCode: string;
+  courseName: string;
+  /** Group number: same group = alternatives (OR), different groups = all required (AND). */
+  groupNo: number;
+  type: "PREREQUISITE" | "CO_REQUISITE" | string;
+  minimumScore: number | null;
 }
 
-// ── Course with full detail ───────────────────────────────────────────────────
-
-export interface CourseDetail extends Course {
+/** `StudentAcademicController.CourseDetail` */
+export interface CourseDetail {
+  course: Course;
   prerequisites: CoursePrerequisite[];
-  /** Courses that have this course as a prerequisite (reverse lookup) */
-  required_by: Pick<Course, "id" | "code" | "name">[];
-  /** Courses to be taken in the same semester */
-  co_requisites: Course[];
 }
 
-// ── API response types ────────────────────────────────────────────────────────
-
-export interface CoursesSearchParams {
-  q?: string;
-  category?: CourseCategory;
-  status?: "ACTIVE" | "INACTIVE";
+/** `StudentAcademicController` — `GET /api/student/courses` is a flat list. */
+export interface CourseSearchParams {
+  search?: string;
   page?: number;
-  page_size?: number;
-}
-
-export interface PaginatedCourses {
-  data: Course[];
-  total: number;
-  page: number;
-  page_size: number;
+  size?: number;
 }

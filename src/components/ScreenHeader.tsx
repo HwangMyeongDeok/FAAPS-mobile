@@ -66,7 +66,7 @@ export function ScreenHeader({
           <Pressable
             onPress={onBack}
             accessibilityRole="button"
-            accessibilityLabel="Quay lại"
+            accessibilityLabel="Go back"
             hitSlop={10}
             className="-ml-2 mr-1 h-10 w-10 items-center justify-center rounded-full active:bg-slate-100 dark:active:bg-slate-800"
           >

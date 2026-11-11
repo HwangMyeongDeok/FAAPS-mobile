@@ -1,48 +1,34 @@
 /**
  * Runtime config resolved from Expo constants + environment variables.
  *
- * ── MOCK-FIRST STRATEGY ──────────────────────────────────────────────────────
- * The app runs entirely on mock data by default. To switch to the real
- * backend you only have to flip ONE of these:
+ * The app talks to the real FAAPS backend only — there is no mock mode any
+ * more. Point it at a running backend with either:
  *
- *   • Set `extra.isMockMode: false` in app.json  (recommended — committed)
- *   • Or set `EXPO_PUBLIC_MOCK_MODE=false` in .env
+ *   • `extra.apiBaseUrl` in app.json (committed default)
+ *   • `EXPO_PUBLIC_API_BASE_URL` in .env (takes precedence)
  *
- * Once `isMockMode` is false, `apiBaseUrl` must point to a reachable backend
- * and every service in `src/lib/api/*` will call the real HTTP wrapper.
- *
- * Precedence: `EXPO_PUBLIC_MOCK_MODE` (env) > `extra.isMockMode` (app.json) > default (true).
+ * On the Android emulator the host machine is reachable at 10.0.2.2, so the
+ * default there is `http://10.0.2.2:8080`; on iOS / web `localhost` works.
  */
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
 
-/** Base URL of the real FAAPS backend. Empty string → mock mode. */
-const apiBaseUrl =
-  (extra.apiBaseUrl as string | undefined) ||
-  (process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined) ||
-  "";
+const DEFAULT_BASE_URL =
+  Platform.OS === "android" ? "http://10.0.2.2:8080" : "http://localhost:8080";
 
-/**
- * Mock mode is driven by an explicit flag, so wiring the backend later is a
- * one-line change and never silently depends on whether a URL happens to be set.
- */
-const envMockMode = process.env.EXPO_PUBLIC_MOCK_MODE;
-const isMockMode =
-  envMockMode !== undefined
-    ? envMockMode !== "false"
-    : typeof extra.isMockMode === "boolean"
-      ? extra.isMockMode
-      : true;
+/** Base URL of the FAAPS backend. */
+export const apiBaseUrl =
+  (process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined) ||
+  (extra.apiBaseUrl as string | undefined) ||
+  DEFAULT_BASE_URL;
 
 export const config = {
-  /** Base URL of the real FAAPS backend. Empty string → mock mode. */
+  /** Base URL of the real FAAPS backend. */
   apiBaseUrl,
-  /** When true, every API call returns mock data (network disabled). */
-  isMockMode,
-  /** Request timeout in ms (real mode only). */
-  requestTimeoutMs: 15_000,
+  /** Request timeout in ms. */
+  requestTimeoutMs: 20_000,
+  /** Timeout for the long-running AI generation calls. */
+  aiTimeoutMs: 120_000,
 } as const;
-
-/** Convenience helper — true when the app should hit the real backend. */
-export const isRealApi = !config.isMockMode;
