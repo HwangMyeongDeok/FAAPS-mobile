@@ -1,19 +1,14 @@
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { Card, CardContent, Progress } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { ErrorBlock, LoadingBlock } from "@/components/feedback";
 import {
-  SemesterBlock,
   CourseDetailSheet,
+  CurriculumLegend,
+  CurriculumOverview,
+  SemesterBlock,
   useCompletedCourseIds,
   useGroupedCourses,
   type CourseCurriculumMeta,
@@ -22,22 +17,14 @@ import {
 import { useMyProfile } from "@/lib/queries/profile";
 
 export default function CurriculumScreen() {
-  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } =
-    useMyProfile();
-  const {
-    groups,
-    isLoading: groupsLoading,
-    isError,
-    refetch: refetchGroups,
-  } = useGroupedCourses(profile?.currentSemester);
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile();
+  const { groups, isLoading: groupsLoading, isError, refetch: refetchGroups } = useGroupedCourses(
+    profile?.currentSemester,
+  );
   const completedCodes = useCompletedCourseIds();
 
-  // The detail sheet works on the course *id*, so it can fetch the full
-  // record (description, objectives, learning outcomes, prerequisites) from
-  // the API — the same sheet the course catalogue tab uses.
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedCourseMeta, setSelectedCourseMeta] =
-    useState<CourseCurriculumMeta | null>(null);
+  const [selectedCourseMeta, setSelectedCourseMeta] = useState<CourseCurriculumMeta | null>(null);
 
   const totalCourses = groups.reduce((s, g) => s + g.courses.length, 0);
   const completedCourses = groups.reduce(
@@ -46,10 +33,8 @@ export default function CurriculumScreen() {
   );
   const totalCredits = groups.reduce((s, g) => s + g.totalCredits, 0);
   const earnedCredits = groups.reduce((s, g) => s + g.earnedCredits, 0);
-  const overallPercent =
-    totalCredits === 0 ? 0 : Math.round((earnedCredits / totalCredits) * 100);
+  const overallPercent = totalCredits === 0 ? 0 : Math.round((earnedCredits / totalCredits) * 100);
 
-  // Map the real curriculum rows onto the shape the list components expect.
   const groupsForView = useMemo(
     () =>
       groups.map((g) => ({
@@ -70,116 +55,49 @@ export default function CurriculumScreen() {
 
   if (profileLoading || groupsLoading) {
     return (
-      <SafeAreaView
-        className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark"
-        edges={["top"]}
-      >
-        <ActivityIndicator color="#F36F21" />
+      <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
+        <View className="flex-1 px-4 pt-4">
+          <LoadingBlock message="Loading curriculum…" />
+        </View>
       </SafeAreaView>
     );
   }
 
   if (isError || !profile) {
     return (
-      <SafeAreaView
-        className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark"
-        edges={["top"]}
-      >
-        <MaterialCommunityIcons
-          name="cloud-off-outline"
-          size={40}
-          color="#CBD5E1"
-        />
-        <Text className="mt-3 text-center text-sm text-ink-muted dark:text-ink-muted-dark">
-          Could not load the curriculum.
-        </Text>
-        <Pressable
-          onPress={() => {
-            refetchProfile();
-            refetchGroups();
-          }}
-          className="mt-4 rounded-full px-6 py-3 active:opacity-80"
-          style={{ backgroundColor: "#F36F21" }}
-        >
-          <Text className="text-sm font-bold text-white">Try again</Text>
-        </Pressable>
+      <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
+        <View className="flex-1 px-4 pt-4">
+          <ErrorBlock
+            title="Could not load the curriculum"
+            message="Check your connection and try again."
+            onRetry={() => {
+              refetchProfile();
+              refetchGroups();
+            }}
+          />
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-ground dark:bg-ground-dark"
-      edges={["top"]}
-    >
-      <ScreenHeader
-        title="Curriculum"
-        subtitle={`${profile.majorName ?? ""} · ${profile.cohort ?? ""}`}
-      />
+    <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
+      <ScreenHeader title="Curriculum" subtitle={`${profile.majorName ?? ""} · ${profile.cohort ?? ""}`} />
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: 40,
-        }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}
       >
-        {/* Overview card */}
-        <Card className="mb-4 rounded-3xl border-line bg-surface shadow-none dark:border-line-dark dark:bg-surface-dark">
-          <CardContent className="p-5">
-            <Text className="text-base font-semibold text-ink dark:text-ink-dark mb-3">
-              Curriculum overview
-            </Text>
-            <View className="flex-row gap-3">
-              <Stat
-                iconName="school"
-                label="Courses completed"
-                value={`${completedCourses}/${totalCourses}`}
-                tone="primary"
-              />
-              <Stat
-                iconName="book-open-page-variant"
-                label="Credits earned"
-                value={`${earnedCredits}/${totalCredits}`}
-                tone="success"
-              />
-              <Stat
-                iconName="trending-up"
-                label="Progress"
-                value={`${overallPercent}%`}
-                tone="warning"
-              />
-            </View>
-            <View className="mt-4">
-              <Progress
-                value={overallPercent}
-                color={
-                  overallPercent >= 80
-                    ? "success"
-                    : overallPercent >= 40
-                      ? "primary"
-                      : "warning"
-                }
-              />
-            </View>
-          </CardContent>
-        </Card>
+        <CurriculumOverview
+          completedCourses={completedCourses}
+          totalCourses={totalCourses}
+          earnedCredits={earnedCredits}
+          totalCredits={totalCredits}
+          overallPercent={overallPercent}
+        />
+        <CurriculumLegend />
 
-        {/* Legend */}
-        <Card className="mb-4 rounded-3xl border-line bg-surface shadow-none dark:border-line-dark dark:bg-surface-dark">
-          <CardContent className="p-4 flex-row items-center gap-2 flex-wrap">
-            <Text className="text-xs text-ink-muted dark:text-ink-muted-dark mr-1">
-              Legend:
-            </Text>
-            <LegendDot color="#10B981" label="Completed" />
-            <LegendDot color="#F59E0B" label="In progress" />
-            <LegendDot color="#8B8178" label="Available" />
-          </CardContent>
-        </Card>
-
-        {/* Semester blocks */}
-        <Text className="text-sm font-semibold text-ink dark:text-ink-dark mb-3 px-1">
+        <Text className="mb-3 px-1 text-sm font-semibold text-ink dark:text-ink-dark">
           Courses by semester
         </Text>
         {groupsForView.map((g) => (
@@ -202,7 +120,7 @@ export default function CurriculumScreen() {
           />
         ))}
 
-        <Text className="text-center text-xs text-ink-muted dark:text-ink-muted-dark mt-4">
+        <Text className="mt-4 text-center text-xs text-ink-muted dark:text-ink-muted-dark">
           Tap a course to see its details.
         </Text>
       </ScrollView>
@@ -216,55 +134,5 @@ export default function CurriculumScreen() {
         }}
       />
     </SafeAreaView>
-  );
-}
-
-// ============================================================
-// Local helpers
-// ============================================================
-
-function Stat({
-  iconName,
-  label,
-  value,
-  tone,
-}: {
-  iconName: string;
-  label: string;
-  value: string;
-  tone: "primary" | "success" | "warning";
-}) {
-  const color =
-    tone === "primary" ? "#F36F21" : tone === "success" ? "#10B981" : "#F59E0B";
-  const bg =
-    tone === "primary"
-      ? "bg-brand-tint dark:bg-brand-tint-dark"
-      : tone === "success"
-        ? "bg-emerald-100 dark:bg-emerald-900/30"
-        : "bg-amber-100 dark:bg-amber-900/30";
-  return (
-    <View className="flex-1">
-      <View className={`h-9 w-9 items-center justify-center rounded-xl ${bg}`}>
-        <MaterialCommunityIcons name={iconName as any} size={18} color={color} />
-      </View>
-      <Text className="text-base font-bold text-ink dark:text-ink-dark mt-2">
-        {value}
-      </Text>
-      <Text
-        className="text-xs text-ink-muted dark:text-ink-muted-dark mt-0.5"
-        numberOfLines={2}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <View className="flex-row items-center gap-1.5">
-      <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-      <Text className="text-xs text-ink dark:text-ink-dark">{label}</Text>
-    </View>
   );
 }
