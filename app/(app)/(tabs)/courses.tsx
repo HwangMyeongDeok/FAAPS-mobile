@@ -62,11 +62,11 @@ export default function CoursesScreen() {
 
       <View className="px-4 pb-3 pt-2">
         <View className="flex-row items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2 dark:border-line-dark dark:bg-surface-dark">
-          <MaterialCommunityIcons name="magnify" size={20} color="#8B8178" />
+          <MaterialCommunityIcons name="magnify" size={20} color="#6B7280" />
           <TextInput
             className="flex-1 text-sm text-ink dark:text-ink-dark"
             placeholder="Search by course code or name..."
-            placeholderTextColor="#8B8178"
+            placeholderTextColor="#6B7280"
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -74,7 +74,7 @@ export default function CoursesScreen() {
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")} hitSlop={8} className="active:opacity-60">
-              <MaterialCommunityIcons name="close-circle" size={18} color="#8B8178" />
+              <MaterialCommunityIcons name="close-circle" size={18} color="#6B7280" />
             </Pressable>
           )}
         </View>
@@ -100,7 +100,7 @@ export default function CoursesScreen() {
               onRefresh={() => {
                 void refetch();
               }}
-              tintColor="#F36F21"
+              tintColor="#F37021"
             />
           }
           onEndReached={handleLoadMore}
@@ -108,7 +108,7 @@ export default function CoursesScreen() {
           ListFooterComponent={
             isFetchingNextPage ? (
               <View className="items-center py-6">
-                <ActivityIndicator color="#F36F21" />
+                <ActivityIndicator color="#F37021" />
               </View>
             ) : undefined
           }
@@ -131,7 +131,7 @@ export default function CoursesScreen() {
 
       {isLoading && (
         <View className="absolute inset-0 items-center justify-center bg-ground/60 dark:bg-ground-dark/60">
-          <ActivityIndicator color="#F36F21" size="large" />
+          <ActivityIndicator color="#F37021" size="large" />
         </View>
       )}
 

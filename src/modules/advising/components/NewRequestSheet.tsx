@@ -50,11 +50,11 @@ export function NewRequestSheet({
         value={subject}
         onChangeText={onSubject}
         placeholder="e.g. Advice on choosing courses for semester 6"
-        placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+        placeholderTextColor={isDark ? "#7D746C" : "#6B7280"}
         autoCapitalize="sentences"
         accessibilityLabel="Subject of the advising request"
         className="rounded-2xl border border-line px-4 py-3 text-[14px] leading-5 text-ink dark:border-line-dark dark:text-ink-dark"
-        style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
+        style={{ backgroundColor: isDark ? "#121212" : "#FAFAFA" }}
       />
 
       <Text className="mb-1.5 mt-4 text-sm font-bold text-ink dark:text-ink-dark">
@@ -64,17 +64,17 @@ export function NewRequestSheet({
         value={content}
         onChangeText={onContent}
         placeholder="Explain what you need advice on, with context (current GPA, courses you have taken…)"
-        placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+        placeholderTextColor={isDark ? "#7D746C" : "#6B7280"}
         multiline
         numberOfLines={5}
         textAlignVertical="top"
         accessibilityLabel="Your question"
         className="min-h-[130px] rounded-2xl border border-line px-4 py-3 text-[14px] leading-5 text-ink dark:border-line-dark dark:text-ink-dark"
-        style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
+        style={{ backgroundColor: isDark ? "#121212" : "#FAFAFA" }}
       />
 
       {error ? (
-        <Text className="mt-1.5 text-xs font-semibold" style={{ color: "#DC2626" }}>
+        <Text className="mt-1.5 text-xs font-semibold" style={{ color: "#EF4444" }}>
           {error}
         </Text>
       ) : (

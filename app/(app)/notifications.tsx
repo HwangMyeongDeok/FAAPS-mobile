@@ -122,7 +122,7 @@ export default function NotificationsScreen() {
 
       {toast ? (
         <View className="absolute bottom-6 left-5 right-5 items-center" pointerEvents="none">
-          <View className="rounded-full px-4 py-2.5" style={{ backgroundColor: isDark ? "#1B1815" : "#191512" }}>
+          <View className="rounded-full px-4 py-2.5" style={{ backgroundColor: isDark ? "#1B1815" : "#1A1A1A" }}>
             <Text className="text-xs font-semibold text-white">{toast}</Text>
           </View>
         </View>

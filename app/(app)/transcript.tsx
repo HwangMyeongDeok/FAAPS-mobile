@@ -28,6 +28,10 @@ import {
 import { WarningBanner } from "@/modules/transcript/components/WarningBanner";
 import { TranscriptHero } from "@/modules/transcript/components/TranscriptHero";
 import {
+  TranscriptImportFab,
+  TranscriptImportHistory,
+} from "@/modules/transcript/components/TranscriptImportSection";
+import {
   SemesterOverview,
   SemesterCard,
 } from "@/modules/transcript/components/SemesterCard";
@@ -167,7 +171,7 @@ export default function TranscriptScreen() {
               Results by semester
             </Text>
             {stats.failed > 0 ? (
-              <Text className="text-[11px] font-bold" style={{ color: "#DC2626" }}>
+              <Text className="text-[11px] font-bold" style={{ color: "#EF4444" }}>
                 {stats.failed} not passed
               </Text>
             ) : null}
@@ -203,7 +207,11 @@ export default function TranscriptScreen() {
             10-point scale · a course below 5.00 is not passed and must be retaken
           </Text>
         </View>
+
+        <TranscriptImportHistory />
       </ScrollView>
+
+      <TranscriptImportFab />
     </SafeAreaView>
   );
 }

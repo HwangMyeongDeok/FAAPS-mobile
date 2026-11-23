@@ -1,5 +1,7 @@
 import { Text, View } from "react-native";
-import { ORANGE, gpaLabel } from "../format";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+
+import { gpaLabel } from "../format";
 
 interface TranscriptHeroProps {
   cumulativeGpa: number | null;
@@ -8,63 +10,99 @@ interface TranscriptHeroProps {
   total: number;
 }
 
-/** Flat orange hero: cumulative GPA + credit progress. */
+/**
+ * The transcript hero — the one place in the app allowed a gradient, and
+ * only the faintest orange → white wash behind the GPA.
+ */
 export function TranscriptHero({ cumulativeGpa, courseCount, earned, total }: TranscriptHeroProps) {
   const pct = total === 0 ? 0 : Math.min(100, Math.round((earned / total) * 100));
   const left = Math.max(0, total - earned);
+
   return (
     <View className="px-5 pt-4">
-      <View className="overflow-hidden rounded-[28px] p-5" style={{ backgroundColor: ORANGE }}>
-        <View
+      <View
+        className="overflow-hidden rounded-2xl border border-[#E5E7EB]"
+        style={{
+          shadowColor: "#000",
+          shadowOpacity: 0.05,
+          shadowRadius: 3,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 1,
+        }}
+      >
+        {/* Ultra-light orange → white wash (the app's only gradient). */}
+        <Svg
+          width="100%"
+          height="100%"
+          style={{ position: "absolute", top: 0, left: 0 }}
           pointerEvents="none"
-          className="absolute -right-14 -top-16 h-48 w-48 rounded-full"
-          style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-        />
-        <View
-          pointerEvents="none"
-          className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full"
-          style={{ backgroundColor: "rgba(0,0,0,0.08)" }}
-        />
-        <View className="flex-row items-center gap-2">
-          <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.22)" }}>
-            <Text className="text-[11px] font-bold text-white">Cumulative · {courseCount} courses</Text>
-          </View>
-          <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.22)" }}>
-            <Text className="text-[11px] font-bold text-white">{gpaLabel(cumulativeGpa)}</Text>
-          </View>
-        </View>
-        <View className="mt-4 flex-row items-end justify-between">
-          <View>
-            <Text className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-              Cumulative GPA
-            </Text>
-            <View className="flex-row items-baseline gap-1">
-              <Text className="text-[52px] font-bold leading-[56px] text-white tabular-nums">
-                {cumulativeGpa != null ? cumulativeGpa.toFixed(2) : "—"}
+        >
+          <Defs>
+            <LinearGradient id="transcriptHero" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#FFF1E7" stopOpacity="0.95" />
+              <Stop offset="1" stopColor="#FFFFFF" stopOpacity="1" />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#transcriptHero)" />
+        </Svg>
+
+        <View className="p-5">
+          <View className="flex-row items-center gap-2">
+            <View className="rounded-full bg-white/70 px-3 py-1.5">
+              <Text className="text-[11px]" style={{ color: "#B45309", fontWeight: "700" }}>
+                Cumulative · {courseCount} courses
               </Text>
-              <Text className="text-base font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
-                / 10
+            </View>
+            <View className="rounded-full bg-white/70 px-3 py-1.5">
+              <Text className="text-[11px]" style={{ color: "#B45309", fontWeight: "700" }}>
+                {gpaLabel(cumulativeGpa)}
               </Text>
             </View>
           </View>
-          <View className="items-end pb-1">
-            <Text className="text-2xl font-bold text-white tabular-nums">
-              {earned}
-              <Text className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
-                /{total}
+
+          <View className="mt-5 flex-row items-end justify-between">
+            <View>
+              <Text className="text-[11px]" style={{ color: "#6B7280" }}>
+                Cumulative GPA
               </Text>
-            </Text>
-            <Text className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-              credits earned
-            </Text>
+              <View className="flex-row items-baseline gap-1">
+                <Text
+                  className="text-[64px] leading-[70px] tabular-nums"
+                  style={{ color: "#1A1A1A", fontWeight: "700" }}
+                >
+                  {cumulativeGpa != null ? cumulativeGpa.toFixed(2) : "—"}
+                </Text>
+                <Text className="text-[15px]" style={{ color: "#6B7280" }}>
+                  / 10
+                </Text>
+              </View>
+            </View>
+            <View className="items-end pb-2">
+              <Text
+                className="text-[22px] tabular-nums"
+                style={{ color: "#1A1A1A", fontWeight: "700" }}
+              >
+                {earned}
+                <Text className="text-[14px]" style={{ color: "#6B7280" }}>
+                  /{total}
+                </Text>
+              </Text>
+              <Text className="text-[11px]" style={{ color: "#6B7280" }}>
+                credits earned
+              </Text>
+            </View>
           </View>
+
+          <View className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+            <View
+              className="h-full rounded-full"
+              style={{ width: `${pct}%`, backgroundColor: "#F37021" }}
+            />
+          </View>
+          <Text className="mt-2 text-[11px]" style={{ color: "#6B7280" }}>
+            {pct}% completed · {left} credits left to graduate
+          </Text>
         </View>
-        <View className="mt-3 h-2.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.3)" }}>
-          <View className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
-        </View>
-        <Text className="mt-2 text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.9)" }}>
-          {pct}% completed · {left} credits left to graduate
-        </Text>
       </View>
     </View>
   );

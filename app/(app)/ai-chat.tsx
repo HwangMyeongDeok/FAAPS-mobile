@@ -1,6 +1,17 @@
 /**
  * FE-S-9 — AI Academic Assistant (chat).
- * Container keeps data hooks; visuals live in `src/modules/ai/components/chat.tsx`.
+ * Container keeps data hooks; visuals live in `src/modules/ai/components/`.
+ *
+ * GAP-5: không tự dính vào conversations[0]. Lần Ä‘ầu vào app (chưa chọn
+ * conversation) hiá»ƒn thá»‹ empty state "Bắt Ä‘ầu trò chuyá»‡n má»›i vá»›i AI".
+ * Nút Menu á»Ÿ header má»Ÿ ConversationDrawer Ä‘á»ƒ tạo/switch conversation.
+ * Gửi tin nhắn lần Ä‘ầu mà chưa có conversation â†’ tự tạo má»›i trưá»›c khi gửi.
+ *
+ * DESIGN:
+ * - Nền #FAFAFA, text #1A1A1A / #6B7280, accent cam FPT #F37021.
+ * - Card bo 16px, shadow 0 1px 3px rgba(0,0,0,0.05). Button bo 12px.
+ * - Bubble user cam/trắng góc phải, AI xám #F3F4F6 góc trái (xem chat.tsx).
+ * - Input bottom sticky: TextInput bo 24px, nút Send tròn cam 48px.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,6 +28,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Menu } from "lucide-react-native";
 import { router } from "expo-router";
 
 import { goBack } from "@/components/ScreenHeader";
@@ -35,6 +47,11 @@ import {
   MessageBlock,
   TypingIndicator,
 } from "@/modules/ai/components/chat";
+import { ConversationDrawer } from "@/modules/ai/components/ConversationDrawer";
+
+const FPT_ORANGE = "#F37021";
+const INK = "#1A1A1A";
+const MUTED = "#6B7280";
 
 export default function AiChatScreen() {
   const isDark = useColorScheme() === "dark";
@@ -42,9 +59,9 @@ export default function AiChatScreen() {
   const { data: conversations = [] } = useAiConversations();
   const createConversation = useCreateAiConversation();
 
-  const [conversationId, setConversationId] = useState<string | null>(
-    conversations[0]?.id ?? null,
-  );
+  // GAP-5: không tự chọn conversations[0] — Ä‘á»ƒ null Ä‘á»ƒ hiá»‡n empty state.
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const { data: serverMessages = [], isLoading } = useAiMessages(conversationId);
   const send = useSendAiMessage();
@@ -73,12 +90,37 @@ export default function AiChatScreen() {
     scrollToEnd();
   }, [messages.length, isThinking, scrollToEnd]);
 
+  const activeTitle = useMemo(
+    () => conversations.find((c) => c.id === conversationId)?.title ?? null,
+    [conversations, conversationId],
+  );
+
   const ensureConversation = useCallback(async () => {
     if (conversationId) return conversationId;
     const created = await createConversation.mutateAsync();
     setConversationId(created.id);
     return created.id;
   }, [conversationId, createConversation]);
+
+  /** Tạo Ä‘oạn chat má»›i từ Drawer. */
+  const onNewConversation = useCallback(async () => {
+    try {
+      const created = await createConversation.mutateAsync();
+      setConversationId(created.id);
+      setMessages([]);
+      setDrawerOpen(false);
+    } catch {
+      // createConversation Ä‘ã surface lá»—i qua React Query; giữ drawer má»Ÿ
+      // Ä‘á»ƒ user bấm lại thay vì crash.
+    }
+  }, [createConversation]);
+
+  /** Switch conversation từ Drawer: Ä‘óng drawer, thread sync theo query. */
+  const onSelectConversation = useCallback((id: string) => {
+    setConversationId(id);
+    setMessages([]);
+    setDrawerOpen(false);
+  }, []);
 
   const onSend = useCallback(
     async (question: string) => {
@@ -104,6 +146,7 @@ export default function AiChatScreen() {
       scrollToEnd();
 
       try {
+        // Chưa có conversation â†’ tạo má»›i trưá»›c khi gửi.
         const id = await ensureConversation();
         const answer = await send.mutateAsync({ conversationId: id, content });
         setMessages((prev) => [...prev, answer.assistantMessage]);
@@ -115,7 +158,7 @@ export default function AiChatScreen() {
             conversationId: conversationId ?? "",
             sender: "ASSISTANT",
             content:
-              "The question could not be sent right now. Check your connection and try again.",
+              "Không gửi Ä‘ược câu hỏi lúc này. Kiá»ƒm tra kết ná»‘i mạng rá»“i thử lại.",
             questionCategory: null,
             isUnsupported: false,
             isFallback: true,
@@ -147,12 +190,13 @@ export default function AiChatScreen() {
   }, []);
 
   const showSuggestions = useMemo(
-    () => messages.length === 0 && AI_PROMPT_SUGGESTIONS.length > 0,
-    [messages.length],
+    () => conversationId === null || messages.length === 0,
+    [conversationId, messages.length],
   );
 
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
+      {/* Header */}
       <View className="border-b border-line bg-surface px-4 pb-3 pt-2 dark:border-line-dark dark:bg-surface-dark">
         <View className="flex-row items-center gap-2">
           <Pressable
@@ -165,13 +209,25 @@ export default function AiChatScreen() {
             <MaterialCommunityIcons
               name="chevron-left"
               size={26}
-              color={isDark ? "#F7F2EC" : "#191512"}
+              color={isDark ? "#F7F2EC" : INK}
             />
+          </Pressable>
+
+          {/* Nút menu â†’ má»Ÿ Drawer há»™i thoại */}
+          <Pressable
+            onPress={() => setDrawerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Má»Ÿ danh sách cuá»™c trò chuyá»‡n"
+            hitSlop={8}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 active:scale-95"
+            style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+          >
+            <Menu size={20} color={isDark ? "#FFA371" : ORANGE_DEEP} />
           </Pressable>
 
           <View
             className="h-9 w-9 items-center justify-center rounded-full"
-            style={{ backgroundColor: ORANGE }}
+            style={{ backgroundColor: FPT_ORANGE }}
           >
             <MaterialCommunityIcons name="school-outline" size={19} color="#FFFFFF" />
           </View>
@@ -180,11 +236,15 @@ export default function AiChatScreen() {
             <Text
               accessibilityRole="header"
               className="text-[17px] font-bold text-ink dark:text-ink-dark"
+              numberOfLines={1}
             >
               AI Academic Assistant
             </Text>
-            <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
-              Grounded in your curriculum · with citations
+            <Text
+              className="text-[11px] text-ink-muted dark:text-ink-muted-dark"
+              numberOfLines={1}
+            >
+              {activeTitle ?? "Grounded in your curriculum · with citations"}
             </Text>
           </View>
 
@@ -215,7 +275,7 @@ export default function AiChatScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 20 }}
         >
-          {isLoading && messages.length === 0 ? (
+          {isLoading && messages.length === 0 && conversationId !== null ? (
             <View className="gap-4 pt-2">
               {[0, 1, 2].map((i) => (
                 <View
@@ -250,7 +310,7 @@ export default function AiChatScreen() {
           {showSuggestions && !isThinking ? (
             <View className="mt-5">
               <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
-                You can ask
+                Bạn có thá»ƒ hỏi
               </Text>
               <View className="mt-2.5 gap-2">
                 {AI_PROMPT_SUGGESTIONS.map((s) => (
@@ -259,7 +319,15 @@ export default function AiChatScreen() {
                     onPress={() => onSend(s.prompt)}
                     accessibilityRole="button"
                     accessibilityLabel={s.label}
-                    className="flex-row items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 py-3.5 active:opacity-70 active:scale-[0.99] dark:border-line-dark dark:bg-surface-dark"
+                    className="flex-row items-center gap-2.5 border border-line bg-surface px-4 py-3.5 active:opacity-70 active:scale-[0.99] dark:border-line-dark dark:bg-surface-dark"
+                    style={{
+                      borderRadius: 16,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 3,
+                      elevation: 1,
+                    }}
                   >
                     <MaterialCommunityIcons
                       name="arrow-top-left"
@@ -277,34 +345,58 @@ export default function AiChatScreen() {
 
           {messages.length > 0 ? (
             <Text className="mt-6 text-center text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-              The AI can make mistakes. Check the cited sources before you register for courses.
+              AI có thá»ƒ mắc lá»—i. Hãy kiá»ƒm tra nguá»“n trích dẫn trưá»›c khi Ä‘Äƒng ký môn học.
             </Text>
           ) : null}
         </ScrollView>
 
-        <View className="border-t border-line bg-surface px-4 pb-3 pt-3 dark:border-line-dark dark:bg-surface-dark">
+        {/* Input area — bottom sticky, TextInput bo 24px, nút Send tròn cam */}
+        <View
+          className="border-t border-line bg-surface px-4 pb-3 pt-3 dark:border-line-dark dark:bg-surface-dark"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 3,
+            elevation: 2,
+          }}
+        >
           <View className="flex-row items-end gap-2">
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder="Ask about your programme…"
-              placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+              placeholder="Hỏi về chương trình học của bạn…"
+              placeholderTextColor={isDark ? "#7D746C" : MUTED}
               multiline
               editable={!isThinking}
               returnKeyType="send"
               onSubmitEditing={() => onSend(draft)}
-              accessibilityLabel="Type your question for the AI assistant"
-              className="max-h-[120px] flex-1 rounded-2xl border border-line px-4 py-3 text-[14px] leading-5 text-ink dark:border-line-dark dark:text-ink-dark"
-              style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
+              accessibilityLabel="Nhập câu hỏi cho trợ lý AI"
+              className="max-h-[120px] flex-1 px-4 py-3 text-[14px] leading-5 text-ink dark:text-ink-dark"
+              style={{
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: isDark ? "#302A24" : "#E5E0D8",
+                backgroundColor: isDark ? "#121212" : "#FAFAFA",
+                minHeight: 48,
+              }}
             />
             <Pressable
               onPress={() => onSend(draft)}
               disabled={!draft.trim() || isThinking}
               accessibilityRole="button"
-              accessibilityLabel="Send the question"
-              className="h-11 w-11 items-center justify-center rounded-full active:opacity-80 active:scale-95"
+              accessibilityLabel="Gửi câu hỏi"
+              className="items-center justify-center active:opacity-80 active:scale-95"
               style={{
-                backgroundColor: draft.trim() ? ORANGE : isDark ? "#302A24" : "#E4DCD3",
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: draft.trim() ? FPT_ORANGE : isDark ? "#302A24" : "#E4DCD3",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 3,
+                elevation: 1,
               }}
             >
               {isThinking ? (
@@ -316,6 +408,17 @@ export default function AiChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Drawer danh sách há»™i thoại */}
+      <ConversationDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        conversations={conversations}
+        activeId={conversationId}
+        creating={createConversation.isPending}
+        onNew={onNewConversation}
+        onSelect={onSelectConversation}
+      />
     </SafeAreaView>
   );
 }

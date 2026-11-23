@@ -52,12 +52,12 @@ export function SemesterCard({ semester, isDark, open, onToggle }: SemesterCardP
       >
         <View
           className="h-11 w-11 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+          style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
         >
           <MaterialCommunityIcons
             name="calendar-month-outline"
             size={22}
-            color={isDark ? "#FFA371" : "#F36F21"}
+            color={isDark ? "#FFA371" : "#F37021"}
           />
         </View>
         <View className="flex-1">
@@ -74,7 +74,7 @@ export function SemesterCard({ semester, isDark, open, onToggle }: SemesterCardP
         <MaterialCommunityIcons
           name={open ? "chevron-up" : "chevron-down"}
           size={20}
-          color={isDark ? "#A79C93" : "#8B8178"}
+          color={isDark ? "#A79C93" : "#6B7280"}
         />
       </Pressable>
       {open ? (

@@ -4,6 +4,16 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { AiChatMessage, AiChatSource } from "@/types/ai";
 import { ORANGE, ORANGE_DEEP } from "../format";
 
+/**
+ * DESIGN (AI Chat polish):
+ * - User bubble: nền cam FPT #F37021, text trắng, cÄƒn phải.
+ * - AI bubble: nền xám nhạt #F3F4F6, text Ä‘en #1A1A1A, cÄƒn trái.
+ * - Không gradient / neon. Whitespace thoáng (mb-3/4, px-4 py-3).
+ */
+export const FPT_ORANGE = "#F37021";
+const AI_BG = "#F3F4F6";
+const INK = "#1A1A1A";
+
 export function EmptyChatState() {
   return (
     <View className="items-center px-4 pt-12">
@@ -11,11 +21,11 @@ export function EmptyChatState() {
         <MaterialCommunityIcons name="robot-happy-outline" size={30} color={ORANGE_DEEP} />
       </View>
       <Text className="mt-4 text-center text-[15px] font-bold text-ink dark:text-ink-dark">
-        Ask anything about your programme
+        Bắt Ä‘ầu trò chuyá»‡n má»›i vá»›i AI
       </Text>
       <Text className="mt-1.5 text-center text-[13px] leading-5 text-ink-muted dark:text-ink-muted-dark">
-        The assistant reads your curriculum, the academic regulations and the course syllabi — then
-        answers with sources you can verify.
+        Trợ lý Ä‘ọc chương trình Ä‘ào tạo, quy chế học vụ và Ä‘ề cương môn học của
+        bạn — rá»“i trả lời kèm nguá»“n trích dẫn Ä‘á»ƒ bạn kiá»ƒm chứng.
       </Text>
     </View>
   );
@@ -34,7 +44,19 @@ export function MessageBlock({ message, isDark, sourcesOpen, onToggleSources, on
   if (mine) {
     return (
       <View className="mb-3 flex-row justify-end">
-        <View className="max-w-[84%] rounded-2xl px-4 py-3" style={{ backgroundColor: ORANGE, borderBottomRightRadius: 6 }}>
+        <View
+          className="max-w-[84%] px-4 py-3"
+          style={{
+            backgroundColor: FPT_ORANGE,
+            borderRadius: 16,
+            borderBottomRightRadius: 6,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 3,
+            elevation: 1,
+          }}
+        >
           <Text className="text-[14px] leading-5 text-white">{message.content}</Text>
         </View>
       </View>
@@ -42,15 +64,32 @@ export function MessageBlock({ message, isDark, sourcesOpen, onToggleSources, on
   }
   return (
     <View className="mb-4 flex-row gap-2.5">
-      <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: ORANGE }}>
+      <View
+        className="mt-0.5 h-8 w-8 items-center justify-center rounded-full"
+        style={{ backgroundColor: FPT_ORANGE }}
+      >
         <MaterialCommunityIcons name="school-outline" size={17} color="#FFFFFF" />
       </View>
       <View className="flex-1">
         <View
-          className="rounded-2xl border border-line bg-surface px-4 py-3 dark:border-line-dark dark:bg-surface-dark"
-          style={{ borderBottomLeftRadius: 6 }}
+          className="px-4 py-3"
+          style={{
+            backgroundColor: isDark ? "#241F1B" : AI_BG,
+            borderRadius: 16,
+            borderBottomLeftRadius: 6,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 3,
+            elevation: 1,
+          }}
         >
-          <Text className="text-[14px] leading-[21px] text-ink dark:text-ink-dark">{message.content}</Text>
+          <Text
+            className="text-[14px] leading-[21px]"
+            style={{ color: isDark ? "#F7F2EC" : INK }}
+          >
+            {message.content}
+          </Text>
           {message.isUnsupported ? (
             <Text className="mt-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
               This question could not be answered from the available documents.
@@ -131,12 +170,12 @@ export function RatingButton({
       accessibilityState={{ selected: active }}
       hitSlop={8}
       className="h-8 w-8 items-center justify-center rounded-full active:opacity-70 active:scale-95"
-      style={{ backgroundColor: active ? (isDark ? "#2E1C0E" : "#FFF1E7") : isDark ? "#241F1B" : "#F2EDE7" }}
+      style={{ backgroundColor: active ? (isDark ? "#2E1C0E" : "#FFF1E7") : isDark ? "#241F1B" : "#F3F4F6" }}
     >
       <MaterialCommunityIcons
         name={(active ? activeIcon : icon) as never}
         size={15}
-        color={active ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#A79C93" : "#8B8178"}
+        color={active ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#A79C93" : "#6B7280"}
       />
     </Pressable>
   );

@@ -31,7 +31,7 @@ export function RoadmapHeader({
           <MaterialCommunityIcons
             name="chevron-left"
             size={26}
-            color={isDark ? "#F7F2EC" : "#191512"}
+            color={isDark ? "#F7F2EC" : "#1A1A1A"}
           />
         </Pressable>
 

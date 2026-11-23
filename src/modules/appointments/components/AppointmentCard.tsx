@@ -27,7 +27,7 @@ export function AppointmentCard({
       className="overflow-hidden rounded-3xl border bg-surface dark:bg-surface-dark"
       style={[
         {
-          borderColor: highlight ? ORANGE : isDark ? "#302A24" : "#EAE1D8",
+          borderColor: highlight ? ORANGE : isDark ? "#302A24" : "#E5E7EB",
           borderWidth: highlight ? 2 : 1,
         },
         cardShadow(isDark),
@@ -70,7 +70,7 @@ export function AppointmentCard({
           <MaterialCommunityIcons
             name="message-text-outline"
             size={15}
-            color={isDark ? "#FFA371" : "#B5460D"}
+            color={isDark ? "#FFA371" : "#B45309"}
             style={{ marginTop: 2 }}
           />
           <Text className="flex-1 text-[13px] leading-5 text-ink dark:text-ink-dark">
@@ -80,16 +80,16 @@ export function AppointmentCard({
         <View className="mt-3 flex-row gap-2.5">
           <View
             className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl py-3"
-            style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+            style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
           >
             <MaterialCommunityIcons
               name="clock-outline"
               size={16}
-              color={isDark ? "#FFA371" : "#B5460D"}
+              color={isDark ? "#FFA371" : "#B45309"}
             />
             <Text
               className="text-xs font-bold"
-              style={{ color: isDark ? "#FFA371" : "#B5460D" }}
+              style={{ color: isDark ? "#FFA371" : "#B45309" }}
             >
               {appointment.status === "PENDING" ? "Awaiting confirmation" : "Confirmed"}
             </Text>
@@ -101,7 +101,7 @@ export function AppointmentCard({
             className="flex-1 items-center justify-center rounded-2xl border py-3 active:opacity-70 active:scale-[0.98]"
             style={{ borderColor: "#FECACA", backgroundColor: isDark ? "#2A1512" : "#fff" }}
           >
-            <Text className="text-xs font-bold" style={{ color: "#DC2626" }}>
+            <Text className="text-xs font-bold" style={{ color: "#EF4444" }}>
               Cancel
             </Text>
           </Pressable>

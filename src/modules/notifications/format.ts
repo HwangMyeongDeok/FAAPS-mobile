@@ -1,5 +1,5 @@
-export const ORANGE = "#F36F21";
-export const ORANGE_DEEP = "#B5460D";
+export const ORANGE = "#F37021";
+export const ORANGE_DEEP = "#B45309";
 
 export const KIND_LABEL: Record<string, string> = {
   PLAN_STATUS: "Study plan",
@@ -14,8 +14,8 @@ export const KIND_DOT: Record<string, string> = {
   PLAN_STATUS: ORANGE,
   MESSAGE: "#2563EB",
   ADVISOR_REQUEST: "#2563EB",
-  REMINDER: "#059669",
-  WARNING: "#DC2626",
+  REMINDER: "#10B981",
+  WARNING: "#EF4444",
   INFO: "#9CA3AF",
 };
 

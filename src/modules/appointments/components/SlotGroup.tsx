@@ -51,14 +51,14 @@ export function SlotGroup({
             >
               <Text
                 className="text-[15px] font-bold tabular-nums"
-                style={{ color: selected ? "#fff" : isDark ? "#F7F2EC" : "#191512" }}
+                style={{ color: selected ? "#fff" : isDark ? "#F7F2EC" : "#1A1A1A" }}
               >
                 {label}
               </Text>
               <Text
                 className="mt-0.5 text-[10px] font-semibold"
                 style={{
-                  color: selected ? "rgba(255,255,255,0.85)" : isDark ? "#7D746C" : "#8B8178",
+                  color: selected ? "rgba(255,255,255,0.85)" : isDark ? "#7D746C" : "#6B7280",
                 }}
               >
                 Open

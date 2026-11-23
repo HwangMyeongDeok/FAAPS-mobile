@@ -95,7 +95,7 @@ export function SemesterBlock({
             ],
           }}
         >
-          <MaterialCommunityIcons name="chevron-down" size={20} color="#8B8178" />
+          <MaterialCommunityIcons name="chevron-down" size={20} color="#6B7280" />
         </Animated.View>
       </Pressable>
 

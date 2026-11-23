@@ -51,7 +51,7 @@ export function CourseDetailSheet({
     <Sheet open={!!courseId} onClose={onClose}>
       {isLoading ? (
         <View className="items-center py-10">
-          <ActivityIndicator color="#F36F21" />
+          <ActivityIndicator color="#F37021" />
           <Text className="mt-3 text-[13px] text-ink-muted dark:text-ink-muted-dark">
             Loading the course…
           </Text>
@@ -74,7 +74,7 @@ export function CourseDetailSheet({
             accessibilityRole="button"
             accessibilityLabel="Try again"
             className="mt-4 rounded-full px-5 py-2.5 active:opacity-85"
-            style={{ backgroundColor: "#F36F21" }}
+            style={{ backgroundColor: "#F37021" }}
           >
             <Text className="text-xs font-bold text-white">Try again</Text>
           </Pressable>
@@ -92,7 +92,7 @@ export function CourseDetailSheet({
   );
 }
 
-/* ── The detail body ───────────────────────────────────────────────────── */
+/* â”€â”€ The detail body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function CourseDetailContent({
   detail,
@@ -231,7 +231,7 @@ function CourseDetailContent({
                   </Text>
                   {prereq.minimumScore != null ? (
                     <Badge variant="secondary" className="px-1.5 py-0">
-                      ≥ {prereq.minimumScore}
+                      â‰¥ {prereq.minimumScore}
                     </Badge>
                   ) : null}
                   {prereq.type === "CO_REQUISITE" ? (
@@ -249,7 +249,7 @@ function CourseDetailContent({
   );
 }
 
-/* ── Helpers ────────────────────────────────────────────────────────────── */
+/* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /**
  * Group the prerequisites by their group number.

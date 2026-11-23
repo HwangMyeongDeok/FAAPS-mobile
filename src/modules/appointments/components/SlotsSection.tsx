@@ -49,7 +49,7 @@ export function SlotsSection({
         <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
           Free slots
         </Text>
-        <Text className="text-xs font-semibold" style={{ color: "#B5460D" }}>
+        <Text className="text-xs font-semibold" style={{ color: "#B45309" }}>
           {headerCount}
         </Text>
       </View>

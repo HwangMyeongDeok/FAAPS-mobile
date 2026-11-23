@@ -14,11 +14,11 @@ interface ButtonProps {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-[#F36F21] active:bg-[#D85A11] text-white border border-[#F36F21]",
+    "bg-[#F37021] active:bg-[#D85A11] text-white border border-[#F37021]",
   secondary:
     "bg-surface dark:bg-surface-dark text-ink dark:text-ink-dark border border-line dark:border-line-dark",
   ghost:
-    "bg-transparent text-[#F36F21] active:bg-brand-tint border border-transparent",
+    "bg-transparent text-[#F37021] active:bg-brand-tint border border-transparent",
 };
 
 export function Button({
@@ -52,7 +52,7 @@ export function Button({
             className={[
               "text-base font-semibold",
               variant === "primary" ? "text-white" : "text-ink dark:text-ink-dark",
-              variant === "ghost" ? "text-[#F36F21]" : "",
+              variant === "ghost" ? "text-[#F37021]" : "",
             ].join(" ")}
           >
             {label}

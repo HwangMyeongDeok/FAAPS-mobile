@@ -8,7 +8,7 @@ interface BadgeProps extends ViewProps {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "bg-[#F36F21] text-white",
+  default: "bg-[#F37021] text-white",
   secondary: "bg-raised text-ink-muted dark:bg-raised-dark dark:text-ink-muted-dark",
   destructive: "bg-destructive text-destructive-foreground",
   outline: "border border-line dark:border-line-dark bg-transparent text-ink dark:text-ink-dark",

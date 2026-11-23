@@ -84,7 +84,7 @@ export default function ProfileScreen() {
             hitSlop={10}
             className="flex-row items-center gap-1 rounded-full bg-brand-tint px-3.5 py-2.5 active:opacity-70 dark:bg-brand-tint-dark"
           >
-            <LogOut {...({ size: 14, color: "#B5460D" } as any)} />
+            <LogOut {...({ size: 14, color: "#B45309" } as any)} />
             <Text className="text-xs font-semibold text-brand-ink dark:text-brand-ink-dark">
               Sign out
             </Text>
@@ -96,7 +96,7 @@ export default function ProfileScreen() {
           <View className="mb-6 items-center">
             <View
               className="mb-3 h-24 w-24 items-center justify-center rounded-full"
-              style={{ backgroundColor: "#F36F21" }}
+              style={{ backgroundColor: "#F37021" }}
             >
               <Text className="text-3xl font-bold text-white">{data.fullName.charAt(0)}</Text>
             </View>

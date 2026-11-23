@@ -14,7 +14,13 @@ import { ScreenHeader, goBack } from "@/components/ScreenHeader";
 import { Sheet } from "@/components/ui";
 import { ErrorBlock } from "@/components/feedback";
 import { useMyAdvisor } from "@/lib/queries/profile";
-import { usePlanSemesters, useSaveStudyPlan, useStudyPlans, useSubmitStudyPlan } from "@/lib/queries/planning";
+import {
+  usePlanIssues,
+  usePlanSemesters,
+  useSaveStudyPlan,
+  useStudyPlans,
+  useSubmitStudyPlan,
+} from "@/lib/queries/planning";
 import { useCurriculumCourses } from "@/modules/curriculum/hooks/useGroupedCourses";
 import type { CurriculumPlan, PlanSemester } from "@/types";
 import { ORANGE, ORANGE_DEEP } from "@/modules/planning/format";
@@ -78,6 +84,22 @@ export default function StudyPlanScreen() {
     setEditTarget(semester);
     setSheetQuery("");
   }, []);
+
+  /**
+   * Validation issues of the plan currently open in the editor.
+   *
+   * `usePlanIssues` hits `GET /api/student/study-plans/{id}/validate`, which
+   * returns the backend's own list of problems (missing prerequisites, credit
+   * overload, mandatory courses not taken…). The hook is disabled when there
+   * is no plan yet — there is nothing to validate.
+   */
+  const editingPlan = editTarget ? (planBySemester.get(editTarget.id) ?? null) : null;
+  const editingPlanId = editingPlan?.header.id ?? null;
+  const {
+    data: planIssues,
+    isFetching: issuesLoading,
+    isError: issuesError,
+  } = usePlanIssues(editingPlanId);
 
   const handleSubmit = useCallback(
     (plan: CurriculumPlan) => {
@@ -162,7 +184,7 @@ export default function StudyPlanScreen() {
           {orderedSemesters.length === 0 ? (
             <View
               className="mt-4 items-center rounded-3xl border border-dashed px-6 py-10"
-              style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
+              style={{ borderColor: isDark ? "#302A24" : "#E5E7EB" }}
             >
               <MaterialCommunityIcons name="calendar-blank-outline" size={38} color="#CBD5E1" />
               <Text className="mt-3 text-center text-[13px] text-ink-muted dark:text-ink-muted-dark">
@@ -200,7 +222,7 @@ export default function StudyPlanScreen() {
         <View className="absolute left-5 right-5 top-2 items-center" pointerEvents="none">
           <View
             className="rounded-full px-4 py-2.5"
-            style={{ backgroundColor: isDark ? "#1B1815" : "#191512" }}
+            style={{ backgroundColor: isDark ? "#1B1815" : "#1A1A1A" }}
           >
             <Text className="text-xs font-semibold text-white">{toast}</Text>
           </View>
@@ -211,12 +233,15 @@ export default function StudyPlanScreen() {
         {editTarget ? (
           <EditorSheet
             semester={editTarget}
-            plan={planBySemester.get(editTarget.id) ?? null}
+            plan={editingPlan}
             curriculum={curriculumCourses}
             query={sheetQuery}
             onQuery={setSheetQuery}
             isDark={isDark}
             saving={savePlan.isPending}
+            issues={planIssues}
+            issuesLoading={issuesLoading}
+            issuesError={issuesError}
             onClose={() => setEditTarget(null)}
             onSave={(courseIds) => {
               savePlan.mutate(
@@ -238,7 +263,7 @@ export default function StudyPlanScreen() {
         <View className="absolute bottom-6 left-5 right-5 items-center" pointerEvents="none">
           <View
             className="flex-row items-center gap-2 rounded-full px-4 py-2.5"
-            style={{ backgroundColor: isDark ? "#1B1815" : "#191512" }}
+            style={{ backgroundColor: isDark ? "#1B1815" : "#1A1A1A" }}
           >
             <Text className="text-xs font-semibold text-white">Sending for review…</Text>
           </View>

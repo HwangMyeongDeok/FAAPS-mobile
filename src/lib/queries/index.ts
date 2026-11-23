@@ -6,3 +6,4 @@ export * from "./notifications";
 export * from "./course";
 export * from "./ai";
 export * from "./transcript";
+export * from "./transcript-import";

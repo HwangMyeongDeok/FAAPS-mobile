@@ -62,7 +62,7 @@ export function BookingSheetContent({
         >
           <Text
             className="text-sm font-bold"
-            style={{ color: isDark ? "#FFA371" : "#B5460D" }}
+            style={{ color: isDark ? "#FFA371" : "#B45309" }}
           >
             {advisor ? initials(advisor.fullName) : "AD"}
           </Text>
@@ -95,7 +95,7 @@ export function BookingSheetContent({
             onPress={() => onQuickPick(q)}
             className="rounded-full border px-3 py-2 active:opacity-70 active:scale-[0.97]"
             style={{
-              borderColor: isDark ? "#302A24" : "#EAE1D8",
+              borderColor: isDark ? "#302A24" : "#E5E7EB",
               backgroundColor: isDark ? "#1B1815" : "#fff",
             }}
           >
@@ -109,18 +109,18 @@ export function BookingSheetContent({
         value={reason}
         onChangeText={onReasonChange}
         placeholder="e.g. I want advice on which courses to take next semester given my current GPA and the AI track…"
-        placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+        placeholderTextColor={isDark ? "#7D746C" : "#6B7280"}
         multiline
         numberOfLines={4}
         textAlignVertical="top"
         className="min-h-[110px] rounded-2xl border px-4 py-3 text-sm leading-5 text-ink dark:text-ink-dark"
         style={{
-          borderColor: reasonError ? "#DC2626" : isDark ? "#302A24" : "#EAE1D8",
-          backgroundColor: isDark ? "#12100E" : "#FAF7F4",
+          borderColor: reasonError ? "#EF4444" : isDark ? "#302A24" : "#E5E7EB",
+          backgroundColor: isDark ? "#121212" : "#FAFAFA",
         }}
       />
       {reasonError ? (
-        <Text className="mt-1.5 text-xs font-semibold" style={{ color: "#DC2626" }}>
+        <Text className="mt-1.5 text-xs font-semibold" style={{ color: "#EF4444" }}>
           {reasonError}
         </Text>
       ) : (
@@ -148,7 +148,7 @@ export function BookingSheetContent({
         )}
       </Pressable>
       {bookError ? (
-        <Text className="mt-2 text-center text-xs font-semibold" style={{ color: "#DC2626" }}>
+        <Text className="mt-2 text-center text-xs font-semibold" style={{ color: "#EF4444" }}>
           The booking failed. Please try again.
         </Text>
       ) : null}

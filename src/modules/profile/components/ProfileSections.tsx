@@ -60,7 +60,7 @@ export function Field({
         onChangeText={onChangeText}
         keyboardType={keyboardType ?? "default"}
         autoCapitalize="none"
-        placeholderTextColor="#8B8178"
+        placeholderTextColor="#6B7280"
         className={[
           "rounded-xl px-3 py-2.5 text-sm",
           editable

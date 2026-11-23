@@ -46,12 +46,12 @@ export function MonthCalendar({
             accessibilityRole="button"
             accessibilityLabel="Previous month"
             className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
-            style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+            style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
           >
             <MaterialCommunityIcons
               name="chevron-left"
               size={22}
-              color={isDark ? "#FFA371" : "#B5460D"}
+              color={isDark ? "#FFA371" : "#B45309"}
             />
           </Pressable>
           <View className="items-center">
@@ -68,12 +68,12 @@ export function MonthCalendar({
             accessibilityRole="button"
             accessibilityLabel="Next month"
             className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
-            style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+            style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
           >
             <MaterialCommunityIcons
               name="chevron-right"
               size={22}
-              color={isDark ? "#FFA371" : "#B5460D"}
+              color={isDark ? "#FFA371" : "#B45309"}
             />
           </Pressable>
         </View>
@@ -130,7 +130,7 @@ export function MonthCalendar({
                               : "#B4A79C"
                             : isDark
                               ? "#F7F2EC"
-                              : "#191512",
+                              : "#1A1A1A",
                       fontWeight: isSelected || isToday ? "700" : "600",
                     }}
                   >

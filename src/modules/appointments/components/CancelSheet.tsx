@@ -36,7 +36,7 @@ export function CancelSheetContent({
           className="h-12 w-12 items-center justify-center rounded-2xl"
           style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" }}
         >
-          <MaterialCommunityIcons name="calendar-remove-outline" size={22} color="#DC2626" />
+          <MaterialCommunityIcons name="calendar-remove-outline" size={22} color="#EF4444" />
         </View>
         <View className="flex-1">
           <Text className="text-lg font-bold text-ink dark:text-ink-dark">
@@ -50,7 +50,7 @@ export function CancelSheetContent({
       </View>
 
       <Text className="mb-2 mt-4 text-sm font-bold text-ink dark:text-ink-dark">
-        Tell your advisor why <Text style={{ color: "#DC2626" }}>*</Text>
+        Tell your advisor why <Text style={{ color: "#EF4444" }}>*</Text>
       </Text>
       <View className="gap-2">
         {CANCEL_REASONS.map((r) => {
@@ -61,7 +61,7 @@ export function CancelSheetContent({
               onPress={() => onPickReason(r)}
               className="flex-row items-center gap-3 rounded-2xl border px-4 py-3.5 active:opacity-70"
               style={{
-                borderColor: active ? "#DC2626" : isDark ? "#302A24" : "#EAE1D8",
+                borderColor: active ? "#EF4444" : isDark ? "#302A24" : "#E5E7EB",
                 backgroundColor: active
                   ? isDark
                     ? "#2A1512"
@@ -73,10 +73,10 @@ export function CancelSheetContent({
             >
               <View
                 className="h-5 w-5 items-center justify-center rounded-full border-2"
-                style={{ borderColor: active ? "#DC2626" : isDark ? "#4A423B" : "#C3B8AD" }}
+                style={{ borderColor: active ? "#EF4444" : isDark ? "#4A423B" : "#C3B8AD" }}
               >
                 {active ? (
-                  <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#DC2626" }} />
+                  <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#EF4444" }} />
                 ) : null}
               </View>
               <Text
@@ -88,7 +88,7 @@ export function CancelSheetContent({
                       : "#991B1B"
                     : isDark
                       ? "#F7F2EC"
-                      : "#191512",
+                      : "#1A1A1A",
                   fontWeight: active ? "700" : "500",
                 }}
               >
@@ -102,11 +102,11 @@ export function CancelSheetContent({
         value={cancelCustom}
         onChangeText={onCustomChange}
         placeholder="Or write another reason…"
-        placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+        placeholderTextColor={isDark ? "#7D746C" : "#6B7280"}
         className="mt-2 rounded-2xl border px-4 py-3 text-sm text-ink dark:text-ink-dark"
         style={{
-          borderColor: isDark ? "#302A24" : "#EAE1D8",
-          backgroundColor: isDark ? "#12100E" : "#FAF7F4",
+          borderColor: isDark ? "#302A24" : "#E5E7EB",
+          backgroundColor: isDark ? "#121212" : "#FAFAFA",
         }}
       />
 
@@ -114,7 +114,7 @@ export function CancelSheetContent({
         <Pressable
           onPress={onKeep}
           className="flex-1 items-center justify-center rounded-2xl border py-4 active:opacity-70 active:scale-[0.98]"
-          style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
+          style={{ borderColor: isDark ? "#302A24" : "#E5E7EB" }}
         >
           <Text className="text-[15px] font-bold text-ink-muted dark:text-ink-muted-dark">
             Keep it
@@ -124,7 +124,7 @@ export function CancelSheetContent({
           onPress={onConfirm}
           disabled={!canConfirm}
           className="flex-[1.4] items-center justify-center rounded-2xl py-4 active:opacity-85 active:scale-[0.99]"
-          style={{ backgroundColor: "#DC2626", opacity: canConfirm ? 1 : 0.45 }}
+          style={{ backgroundColor: "#EF4444", opacity: canConfirm ? 1 : 0.45 }}
         >
           {pending ? (
             <ActivityIndicator color="#fff" />

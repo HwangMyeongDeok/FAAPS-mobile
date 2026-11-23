@@ -38,7 +38,7 @@ export function NotifBell({ unread, onPress }: { unread: number; onPress: () => 
       accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
       className="relative h-11 w-11 items-center justify-center rounded-full border border-line bg-surface active:opacity-70 active:scale-95 dark:border-line-dark dark:bg-surface-dark"
     >
-      <MaterialCommunityIcons name="bell-outline" size={20} color="#191512" />
+      <MaterialCommunityIcons name="bell-outline" size={20} color="#1A1A1A" />
       {unread > 0 ? (
         <View
           className="absolute -right-0.5 -top-0.5 min-h-[20px] min-w-[20px] items-center justify-center rounded-full border-2 border-white px-1"
@@ -61,7 +61,7 @@ interface QuickCardProps {
   featured?: boolean;
 }
 
-/** 2×2 flat cards — the featured one wears deep orange. */
+/** 2Ã—2 flat cards — the featured one wears deep orange. */
 export function QuickCard({ icon, title, desc, onPress, featured }: QuickCardProps) {
   const featuredBg = "#D85A11";
   return (
@@ -72,16 +72,16 @@ export function QuickCard({ icon, title, desc, onPress, featured }: QuickCardPro
       style={
         featured
           ? { backgroundColor: featuredBg, borderColor: featuredBg }
-          : { backgroundColor: "#FFFFFF", borderColor: "#EAE1D8" }
+          : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }
       }
     >
       <MaterialCommunityIcons name={icon as never} size={22} color={featured ? "#FFFFFF" : ORANGE} />
-      <Text className="mt-3 text-sm font-bold" style={{ color: featured ? "#FFFFFF" : "#191512" }}>
+      <Text className="mt-3 text-sm font-bold" style={{ color: featured ? "#FFFFFF" : "#1A1A1A" }}>
         {title}
       </Text>
       <Text
         className="mt-0.5 text-[11px]"
-        style={{ color: featured ? "rgba(255,255,255,0.82)" : "#6A6058" }}
+        style={{ color: featured ? "rgba(255,255,255,0.82)" : "#6B7280" }}
         numberOfLines={1}
       >
         {desc}
@@ -142,7 +142,7 @@ export function NavRow({
       <MaterialCommunityIcons
         name="chevron-right"
         size={22}
-        color={isDark ? "#A79C93" : "#8B8178"}
+        color={isDark ? "#A79C93" : "#6B7280"}
       />
     </Pressable>
   );

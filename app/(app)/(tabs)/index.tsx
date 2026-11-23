@@ -12,16 +12,16 @@ import { ErrorBlock } from "@/components/feedback";
 import { useMyAdvisor, useMyProfile, useMyProgress } from "@/lib/queries/profile";
 import { useNotifications, useUnreadCount } from "@/lib/queries/notifications";
 import { useCourses } from "@/lib/queries/course";
+import { useMyAppointments } from "@/lib/queries/appointments";
 import { ORANGE } from "@/modules/home/format";
 import { HomeSkeleton } from "@/modules/home/components/common";
+import { DashboardHero, DashboardTopBar, KpiGrid } from "@/modules/home/components/dashboard";
+import { UpcomingSection } from "@/modules/home/components/upcoming";
+import { QuickLinks } from "@/modules/home/components/quicklinks";
 import {
   AdvisorSection,
   AiEntryCard,
   CatalogPreview,
-  HomeHero,
-  HomeTopBar,
-  KpiStrip,
-  QuickAccess,
   RemindersSection,
   StudyMetaFooter,
 } from "@/modules/home/components/sections";
@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const { data: notifications, refetch: refetchNotifs } = useNotifications();
   const { data: unreadCount = 0, refetch: refetchUnread } = useUnreadCount();
   const { data: coursesData, refetch: refetchCourses } = useCourses({ size: 6 });
+  const { data: appointments = [] } = useMyAppointments();
   const courses = useMemo(() => coursesData?.pages.flatMap((p) => p) ?? [], [coursesData]);
 
   const refreshing = profileLoading;
@@ -88,18 +89,28 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ORANGE} />}
       >
-        <HomeTopBar profile={profile} unreadCount={unreadCount} onNotif={() => router.push("/(app)/notifications")} />
-        <HomeHero profile={profile} gpa={gpa} stats={stats} />
+        <DashboardTopBar unreadCount={unreadCount} onNotif={() => router.push("/(app)/notifications")} />
+        <DashboardHero profile={profile} gpa={gpa} stats={stats} />
+        <KpiGrid profile={profile} gpa={gpa} stats={stats} />
+        <UpcomingSection appointments={appointments} advisor={advisor} />
+        <QuickLinks
+          links={[
+            { icon: "book-open-page-variant", title: "Curriculum", onPress: () => router.push("/(app)/(tabs)/curriculum") },
+            { icon: "clipboard-text-clock-outline", title: "Study plan", onPress: () => router.push("/(app)/study-plan") },
+            { icon: "file-document-outline", title: "Transcript", onPress: () => router.push("/(app)/transcript") },
+            { icon: "calendar-clock", title: "Book a session", onPress: () => router.push("/(app)/appointments") },
+            { icon: "message-text-outline", title: "Advising", onPress: () => router.push("/(app)/advising") },
+            { icon: "account-outline", title: "My profile", onPress: () => router.push("/(app)/(tabs)/profile") },
+          ]}
+        />
         <AiEntryCard />
-        <KpiStrip profile={profile} />
-        <QuickAccess stats={stats} advisor={advisor} profile={profile} gpa={gpa} isDark={isDark} />
         <AdvisorSection advisor={advisor} advisorError={advisorError} isDark={isDark} onRetry={() => refetchAdvisor()} />
         <RemindersSection notifications={notifications} unreadCount={unreadCount} />
         <CatalogPreview courses={courses} />
         <StudyMetaFooter profile={profile} progress={progress} stats={stats} />
 
         <View className="mt-4 flex-row items-center justify-center gap-1.5 px-5">
-          <MaterialCommunityIcons name="shield-check-outline" size={12} color={isDark ? "#7D746C" : "#8B8178"} />
+          <MaterialCommunityIcons name="shield-check-outline" size={12} color={isDark ? "#7D746C" : "#6B7280"} />
           <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark">
             Data from the FAAPS student portal · refreshed on pull
           </Text>

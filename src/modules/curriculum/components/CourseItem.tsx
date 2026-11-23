@@ -34,8 +34,8 @@ const statusVisuals: Record<
 > = {
   completed: { iconName: "check-circle", color: "#10B981", label: "Completed" },
   in_progress: { iconName: "progress-clock", color: "#F59E0B", label: "In progress" },
-  available: { iconName: "circle-outline", color: "#8B8178", label: "Available" },
-  locked: { iconName: "lock", color: "#8B8178", label: "Locked" },
+  available: { iconName: "circle-outline", color: "#6B7280", label: "Available" },
+  locked: { iconName: "lock", color: "#6B7280", label: "Locked" },
 };
 
 function deriveStatus(c: CourseItemData): CourseStatus {
