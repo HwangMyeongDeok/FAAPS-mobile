@@ -49,6 +49,12 @@ export interface RequestOptions<TBody> {
   skipCsrf?: boolean;
   /** Skip the automatic 401 → refresh → retry handling. */
   skipRefresh?: boolean;
+  /**
+   * Expected response shape. Defaults to JSON parsing.
+   * Use `"binary"` for file downloads (e.g. the transcript error workbook)
+   * where the backend returns `application/octet-stream` / xlsx bytes.
+   */
+  response?: "json" | "binary";
 }
 
 export interface CsrfToken {
@@ -140,6 +146,7 @@ async function send<TResponse>(
     headers = {},
     timeoutMs = config.requestTimeoutMs,
     skipCsrf = false,
+    response = "json",
   } = opts;
 
   const controller = new AbortController();
@@ -149,9 +156,14 @@ async function send<TResponse>(
 
   const requestHeaders: Record<string, string> = {
     Accept: "application/json",
-    ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     ...headers,
   };
+
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
+  if (!isFormData && body !== undefined && !requestHeaders["Content-Type"]) {
+    requestHeaders["Content-Type"] = "application/json";
+  }
 
   if (!skipCsrf && !SAFE_METHODS.has(method)) {
     try {
@@ -171,7 +183,14 @@ async function send<TResponse>(
   };
 
   if (body !== undefined && body !== null) {
-    init.body = JSON.stringify(body);
+    if (isFormData) {
+      // Let fetch set the multipart boundary automatically — never set
+      // Content-Type manually for FormData (RN + web both handle it).
+      delete requestHeaders["Content-Type"];
+      init.body = body as unknown as BodyInit;
+    } else {
+      init.body = JSON.stringify(body);
+    }
   }
 
   try {
@@ -187,6 +206,12 @@ async function send<TResponse>(
     }
 
     if (res.status === 204) return undefined as TResponse;
+
+    if (response === "binary") {
+      // Error workbook download (xlsx). RN fetch supports .blob().
+      const blob = await res.blob();
+      return blob as unknown as TResponse;
+    }
 
     const text = await res.text();
     if (!text) return undefined as TResponse;

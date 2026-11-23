@@ -11,10 +11,10 @@ interface ScreenHeaderProps {
   /**
    * Which palette the header wears.
    *
-   * • "framed" (default) — the current FAAPS warm-paper theme: warm ground
+   * · "framed" (default) — the current FAAPS warm-paper theme: warm ground
    *   surfaces, warm hairlines, dark-mode aware. Used by every screen
    *   rebuilt on the new design language.
-   * • "legacy" — the original shadcn/slate palette, kept for the three tabs
+   * · "legacy" — the original shadcn/slate palette, kept for the three tabs
    *   that have not been restyled yet.
    */
   variant?: "framed" | "legacy";
@@ -36,21 +36,21 @@ export function ScreenHeader({
   const chevronColor = framed
     ? isDark
       ? "#F7F2EC"
-      : "#191512"
+      : "#1A1A1A"
     : isDark
       ? "#F8FAFC"
       : "#0F172A";
   const titleColor = framed
     ? isDark
       ? "#F7F2EC"
-      : "#191512"
+      : "#1A1A1A"
     : isDark
       ? "#FFFFFF"
       : "#0F172A";
   const subtitleColor = framed
     ? isDark
       ? "#A79C93"
-      : "#6A6058"
+      : "#6B7280"
     : isDark
       ? "#94A3B8"
       : "#64748B";

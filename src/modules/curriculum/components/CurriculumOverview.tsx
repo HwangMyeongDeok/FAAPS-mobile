@@ -12,7 +12,7 @@ interface StatProps {
 
 /** One stat tile inside the overview card. */
 export function CurriculumStat({ iconName, label, value, tone }: StatProps) {
-  const color = tone === "primary" ? "#F36F21" : tone === "success" ? "#10B981" : "#F59E0B";
+  const color = tone === "primary" ? "#F37021" : tone === "success" ? "#10B981" : "#F59E0B";
   const bg =
     tone === "primary"
       ? "bg-brand-tint dark:bg-brand-tint-dark"
@@ -88,7 +88,7 @@ export function CurriculumLegend() {
         <Text className="mr-1 text-xs text-ink-muted dark:text-ink-muted-dark">Legend:</Text>
         <LegendDot color="#10B981" label="Completed" />
         <LegendDot color="#F59E0B" label="In progress" />
-        <LegendDot color="#8B8178" label="Available" />
+        <LegendDot color="#6B7280" label="Available" />
       </CardContent>
     </Card>
   );

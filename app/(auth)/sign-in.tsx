@@ -1,11 +1,14 @@
 import { LogIn, Sparkles } from "lucide-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Text, TextInput, View } from "react-native";
-import { Redirect } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Badge, Button } from "@/components/ui";
 import { useAuthStore } from "@/stores/auth";
+
+const FPT_ORANGE = "#F37021";
+const MUTED = "#6B7280";
 
 export default function SignIn() {
   const signIn = useAuthStore((s) => s.signIn);
@@ -129,13 +132,31 @@ export default function SignIn() {
 
           {loading ? (
             <View className="mt-4 items-center">
-              <ActivityIndicator color="#F36F21" />
+              <ActivityIndicator color="#F37021" />
             </View>
           ) : null}
 
-          <Text className="text-center text-xs text-muted-foreground mt-4">
+          <Text
+            className="text-center text-xs text-muted-foreground mt-4"
+            style={{ color: MUTED }}
+          >
             By continuing, you agree to the FAAPS terms of use.
           </Text>
+
+          {/* Link sang màn hình Ä‘Äƒng ký */}
+          <View className="mt-4 flex-row items-center justify-center gap-1.5">
+            <Text className="text-[13px]" style={{ color: MUTED }}>
+              Chưa có tài khoản?
+            </Text>
+            <Text
+              accessibilityRole="link"
+              onPress={() => router.replace("/(auth)/register")}
+              suppressHighlighting
+              style={{ color: FPT_ORANGE, fontWeight: "600" }}
+            >
+              ĐÄƒng ký
+            </Text>
+          </View>
         </View>
       </View>
     </SafeAreaView>

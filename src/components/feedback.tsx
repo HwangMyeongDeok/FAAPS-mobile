@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const ORANGE = "#F36F21";
+const ORANGE = "#F37021";
 
 interface ErrorBlockProps {
   title: string;

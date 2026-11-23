@@ -31,13 +31,13 @@ export function ConversationRow({ conversation, onPress }: ConversationRowProps)
               : "#FFE5D4"
             : isDark
               ? "#241F1B"
-              : "#F2EDE7",
+              : "#F3F4F6",
         }}
       >
         <MaterialCommunityIcons
           name="message-text-outline"
           size={20}
-          color={open ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#7D746C" : "#8B8178"}
+          color={open ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#7D746C" : "#6B7280"}
         />
       </View>
       <View className="flex-1">

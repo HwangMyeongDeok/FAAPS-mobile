@@ -1,7 +1,7 @@
 import type { TranscriptRow } from "@/types";
 
-export const ORANGE = "#F36F21";
-export const ORANGE_DEEP = "#B5460D";
+export const ORANGE = "#F37021";
+export const ORANGE_DEEP = "#B45309";
 
 export function gradeTone(grade: number | null, isDark: boolean): { bg: string; fg: string } {
   const value = grade ?? 0;
@@ -14,7 +14,7 @@ export function gradeTone(grade: number | null, isDark: boolean): { bg: string; 
   if (value >= 5) {
     return isDark ? { bg: "#3A2A0A", fg: "#FCD34D" } : { bg: "#FEF3C7", fg: "#92400E" };
   }
-  return isDark ? { bg: "#3B0F0F", fg: "#FCA5A5" } : { bg: "#FEE2E2", fg: "#DC2626" };
+  return isDark ? { bg: "#3B0F0F", fg: "#FCA5A5" } : { bg: "#FEE2E2", fg: "#EF4444" };
 }
 
 /** The semesters of the transcript, newest first, with their rows. */

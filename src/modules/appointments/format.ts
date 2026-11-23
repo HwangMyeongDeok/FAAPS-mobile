@@ -3,8 +3,8 @@
  * Pure functions, no dependencies, shared by the screen and its sections.
  */
 
-export const ORANGE = "#F36F21";
-export const ORANGE_DEEP = "#B5460D";
+export const ORANGE = "#F37021";
+export const ORANGE_DEEP = "#B45309";
 
 export const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -93,7 +93,7 @@ export function initials(name: string): string {
 /** 42 calendar cells for the month containing `cursor` — the week starts on Monday. */
 export function monthCells(cursor: Date): Date[] {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-  // JS: Sun=0..Sat=6 → shift so Mon=0..Sun=6
+  // JS: Sun=0..Sat=6 â†’ shift so Mon=0..Sun=6
   const lead = (first.getDay() + 6) % 7;
   const start = new Date(first);
   start.setDate(first.getDate() - lead);

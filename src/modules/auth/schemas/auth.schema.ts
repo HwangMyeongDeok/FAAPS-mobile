@@ -5,13 +5,26 @@ export const signInSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+/**
+ * Field rules shared by the sign-up and the register form.
+ *
+ * Kept in one place so the two forms can never drift apart: the register
+ * screen reuses these exact rules and only adds the fields the backend
+ * `RegisterRequest` needs on top (date of birth, phone, curriculum).
+ */
+const accountFields = {
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  studentCode: z.string().min(6, "Invalid student ID"),
+};
+
 export const signUpSchema = z
   .object({
     full_name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    email: accountFields.email,
+    password: accountFields.password,
     confirm_password: z.string(),
-    student_code: z.string().min(6, "Invalid student ID"),
+    student_code: accountFields.studentCode,
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "The passwords do not match",
@@ -29,6 +42,35 @@ export const updatePasswordSchema = z
     path: ["confirm_password"],
   });
 
+/**
+ * Register form — mirrors the backend `RegisterRequest`.
+ *
+ * The backend (`StudentRegistrationController.RegisterRequest`) requires:
+ *   fullName, email, password, dateOfBirth, studentCode, phone
+ * and accepts an optional `curriculumVersionId`.
+ *
+ * `dateOfBirth` is sent as an ISO local date (`yyyy-MM-dd`) because the
+ * backend binds it to a `LocalDate`.
+ */
+export const registerSchema = z
+  .object({
+    fullName: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự"),
+    email: accountFields.email,
+    password: accountFields.password,
+    confirmPassword: z.string(),
+    studentCode: accountFields.studentCode,
+    phone: z.string().min(8, "Số điện thoại phải có ít nhất 8 số"),
+    dateOfBirth: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày sinh phải có định dạng YYYY-MM-DD"),
+    curriculumVersionId: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
+
 export type SignInInput = z.infer<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;

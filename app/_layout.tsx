@@ -42,7 +42,7 @@ export default function RootLayout() {
           // Wait for the persisted session to be restored before deciding
           // where to route — show a spinner instead of a blank screen.
           <View className="flex-1 items-center justify-center bg-ground dark:bg-ground-dark">
-            <ActivityIndicator color="#F36F21" size="large" />
+            <ActivityIndicator color="#F37021" size="large" />
           </View>
         ) : (
           <Stack screenOptions={{ headerShown: false }}>

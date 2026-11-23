@@ -107,5 +107,5 @@ export function NotificationRow({
 /** Shared tint for the empty icon — keeps dark/light in one place. */
 export function emptyTint(isDark: boolean): string {
   void ORANGE_DEEP;
-  return isDark ? "#241F1B" : "#F2EDE7";
+  return isDark ? "#241F1B" : "#F3F4F6";
 }

@@ -103,7 +103,7 @@ export function SessionsSection({
                   </Text>
                   <Text
                     className="text-[11px] font-bold"
-                    style={{ color: a.status === "CANCELLED" ? "#C2410C" : "#6A6058" }}
+                    style={{ color: a.status === "CANCELLED" ? "#EF4444" : "#6B7280" }}
                   >
                     {a.status === "CANCELLED" ? "Cancelled" : "Completed"}
                   </Text>
@@ -125,7 +125,7 @@ export function BookingSuccessBanner({
 }) {
   return (
     <View className="px-5 pt-4">
-      <View className="flex-row items-center gap-3 rounded-3xl p-4" style={{ backgroundColor: "#0F7A4D" }}>
+      <View className="flex-row items-center gap-3 rounded-3xl p-4" style={{ backgroundColor: "#10B981" }}>
         <View
           className="h-10 w-10 items-center justify-center rounded-full"
           style={{ backgroundColor: "rgba(255,255,255,0.22)" }}

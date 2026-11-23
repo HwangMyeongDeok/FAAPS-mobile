@@ -23,20 +23,20 @@ export function FilterChip({ label, count, active, onPress }: FilterChipProps) {
           : {
               backgroundColor: "transparent",
               borderWidth: 1,
-              borderColor: isDark ? "#302A24" : "#EAE1D8",
+              borderColor: isDark ? "#302A24" : "#E5E7EB",
             }
       }
     >
       <Text
         className="text-xs font-bold"
-        style={{ color: active ? "#FFFFFF" : isDark ? "#A79C93" : "#6A6058" }}
+        style={{ color: active ? "#FFFFFF" : isDark ? "#A79C93" : "#6B7280" }}
       >
         {label}
       </Text>
       <Text
         className="text-xs font-semibold tabular-nums"
         style={{
-          color: active ? "rgba(255,255,255,0.8)" : isDark ? "#7D746C" : "#8B8178",
+          color: active ? "rgba(255,255,255,0.8)" : isDark ? "#7D746C" : "#6B7280",
         }}
       >
         {count}

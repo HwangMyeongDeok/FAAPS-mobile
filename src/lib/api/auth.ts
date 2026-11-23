@@ -22,12 +22,22 @@ export async function signIn(credentials: AuthCredentials): Promise<AuthSession>
   return session;
 }
 
-/** Sign out — invalidates the server session and clears the cookies. */
+/**
+ * Sign out — invalidates the server session (best-effort) and clears local state.
+ *
+ * NOTE (GAP-1): backend `AuthController` hiện KHÔNG expose `POST /api/auth/logout`
+ * nên lời gọi dưới đây luôn trả 404. Lỗi được nuốt có chủ ý vì logout trên
+ * mobile là thao tác local-first: dù server có chết hay endpoint chưa tồn tại,
+ * app vẫn PHẢI clear CSRF token + persisted session + đưa store về
+ * `unauthenticated` để user không bị kẹt ở màn hình protected.
+ * Tuyệt đối KHÔNG `console.log/console.warn` ở đây để tránh rác log trên
+ * production khi mọi lần sign-out đều đi qua nhánh catch này.
+ */
 export async function signOut(): Promise<void> {
   try {
     await http.post<void>("/api/auth/logout");
   } catch {
-    /* the local session is dropped either way */
+    /* GAP-1: endpoint chưa tồn tại ở BE (404) — bỏ qua, vẫn clear session local bên dưới. */
   }
   clearCsrfToken();
   await clearSession();

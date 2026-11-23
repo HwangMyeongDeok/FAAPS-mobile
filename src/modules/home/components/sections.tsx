@@ -119,7 +119,7 @@ export function KpiStrip({ profile }: { profile: StudentProfile }) {
         <View className="flex-1 items-center py-4">
           <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">Status</Text>
           <View className="mt-1.5 flex-row items-center gap-1.5">
-            <View className="h-2 w-2 rounded-full" style={{ backgroundColor: "#059669" }} />
+            <View className="h-2 w-2 rounded-full" style={{ backgroundColor: "#10B981" }} />
             <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">{profile.academicStatus ?? "ACTIVE"}</Text>
           </View>
         </View>

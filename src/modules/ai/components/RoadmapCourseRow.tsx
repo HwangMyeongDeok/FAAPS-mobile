@@ -31,7 +31,7 @@ export function RoadmapCourseRow({ course, isDark, onPress }: RoadmapCourseRowPr
             {course.categoryName ? (
               <View
                 className="rounded-full px-2 py-0.5"
-                style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+                style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
               >
                 <Text className="text-[10px] font-semibold text-ink-muted dark:text-ink-muted-dark">
                   {course.categoryName}

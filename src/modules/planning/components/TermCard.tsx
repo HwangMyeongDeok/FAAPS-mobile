@@ -48,7 +48,7 @@ export function TermCard({
               {semester.name}
             </Text>
             <Text className="mt-0.5 text-[11px] text-ink-muted tabular-nums dark:text-ink-muted-dark">
-              {semester.code} · {semester.startDate} → {semester.endDate}
+              {semester.code} · {semester.startDate} â†’ {semester.endDate}
             </Text>
           </View>
           <View
@@ -58,7 +58,7 @@ export function TermCard({
             <Text
               className="text-[10px] font-bold"
               style={{
-                color: isDark && tone.bg === "#F2EDE7" ? "#A79C93" : tone.fg,
+                color: isDark && tone.bg === "#F3F4F6" ? "#A79C93" : tone.fg,
               }}
             >
               {statusLabel(status).toUpperCase()}
@@ -78,7 +78,7 @@ export function TermCard({
                 <View key={c.id} className="flex-row items-center gap-2">
                   <Text
                     className="text-[11px] font-bold tabular-nums"
-                    style={{ color: isDark ? "#FFA371" : "#B5460D" }}
+                    style={{ color: isDark ? "#FFA371" : "#B45309" }}
                   >
                     {c.code}
                   </Text>
@@ -117,7 +117,7 @@ export function TermCard({
               <MaterialCommunityIcons
                 name="alert-circle-outline"
                 size={14}
-                color={isDark ? "#FFA371" : "#B5460D"}
+                color={isDark ? "#FFA371" : "#B45309"}
                 style={{ marginTop: 1 }}
               />
               <Text className="flex-1 text-[11px] leading-[16px] text-ink-muted dark:text-ink-muted-dark">

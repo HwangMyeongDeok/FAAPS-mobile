@@ -10,7 +10,7 @@ interface ProgressProps {
 }
 
 const colorMap = {
-  primary:    "bg-[#F36F21]",
+  primary:    "bg-[#F37021]",
   success:    "bg-emerald-500",
   warning:    "bg-amber-500",
   destructive:"bg-destructive",

@@ -1,5 +1,5 @@
-export const ORANGE = "#F36F21";
-export const ORANGE_DEEP = "#B5460D";
+export const ORANGE = "#F37021";
+export const ORANGE_DEEP = "#B45309";
 
 /** The status the backend reports for a plan the student still owns. */
 export type PlanStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | string;
@@ -43,6 +43,6 @@ export function statusTone(status: PlanStatus): { bg: string; fg: string } {
     case "REJECTED":
       return { bg: "#FEE2E2", fg: "#B91C1C" };
     default:
-      return { bg: "#F2EDE7", fg: "#6A6058" };
+      return { bg: "#F3F4F6", fg: "#6B7280" };
   }
 }

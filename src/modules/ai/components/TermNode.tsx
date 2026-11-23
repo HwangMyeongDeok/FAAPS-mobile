@@ -43,7 +43,7 @@ export function TermNode({
                 : "#D8CEC3"
               : isDark
                 ? "#302A24"
-                : "#EAE1D8",
+                : "#E5E7EB",
           }}
         >
           {isCurrent ? (
@@ -57,7 +57,7 @@ export function TermNode({
           ) : (
             <Text
               className="text-[11px] font-bold tabular-nums"
-              style={{ color: isDark ? "#A79C93" : "#8B8178" }}
+              style={{ color: isDark ? "#A79C93" : "#6B7280" }}
             >
               {semester.semesterNumber}
             </Text>
@@ -67,7 +67,7 @@ export function TermNode({
           <View
             className="w-[2px] flex-1"
             style={{
-              backgroundColor: isDark ? "#302A24" : "#EAE1D8",
+              backgroundColor: isDark ? "#302A24" : "#E5E7EB",
               minHeight: 20,
               marginVertical: 4,
             }}
@@ -106,7 +106,7 @@ export function TermNode({
                 {semester.status === "PLANNED" ? (
                   <View
                     className="rounded-full px-2 py-0.5"
-                    style={{ backgroundColor: isDark ? "#241F1B" : "#F2EDE7" }}
+                    style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
                   >
                     <Text className="text-[10px] font-bold text-ink-muted dark:text-ink-muted-dark">
                       AI PROPOSAL
@@ -123,7 +123,7 @@ export function TermNode({
             <MaterialCommunityIcons
               name={open ? "chevron-up" : "chevron-down"}
               size={20}
-              color={isDark ? "#A79C93" : "#8B8178"}
+              color={isDark ? "#A79C93" : "#6B7280"}
             />
           </View>
 
@@ -139,7 +139,7 @@ export function TermNode({
             {semester.courses.length === 0 ? (
               <View
                 className="rounded-2xl border border-dashed px-4 py-4"
-                style={{ borderColor: isDark ? "#302A24" : "#EAE1D8" }}
+                style={{ borderColor: isDark ? "#302A24" : "#E5E7EB" }}
               >
                 <Text className="text-center text-[12px] text-ink-muted dark:text-ink-muted-dark">
                   No courses in this semester

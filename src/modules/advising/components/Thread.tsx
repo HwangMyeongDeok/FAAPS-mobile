@@ -62,7 +62,7 @@ export function Thread({ request, onBack }: ThreadProps) {
           >
             <Text
               className="text-sm font-bold"
-              style={{ color: isDark ? "#FFA371" : "#B5460D" }}
+              style={{ color: isDark ? "#FFA371" : "#B45309" }}
             >
               {initials(request.advisorName || "AD")}
             </Text>
@@ -112,11 +112,11 @@ export function Thread({ request, onBack }: ThreadProps) {
               value={draft}
               onChangeText={setDraft}
               placeholder="Message your advisor..."
-              placeholderTextColor={isDark ? "#7D746C" : "#8B8178"}
+              placeholderTextColor={isDark ? "#7D746C" : "#6B7280"}
               multiline
               editable={!send.isPending}
               className="max-h-[120px] flex-1 rounded-2xl border border-line px-4 py-3 text-sm text-ink dark:border-line-dark dark:text-ink-dark"
-              style={{ backgroundColor: isDark ? "#12100E" : "#FAF7F4" }}
+              style={{ backgroundColor: isDark ? "#121212" : "#FAFAFA" }}
             />
             <Pressable
               onPress={onSend}
@@ -179,20 +179,20 @@ export function Bubble({
                 backgroundColor: isDark ? "#1B1815" : "#FFFFFF",
                 borderBottomLeftRadius: 6,
                 borderWidth: 1,
-                borderColor: isDark ? "#302A24" : "#EAE1D8",
+                borderColor: isDark ? "#302A24" : "#E5E7EB",
               }
         }
       >
         <Text
           className="text-[14px] leading-5"
-          style={{ color: mine ? "#FFFFFF" : isDark ? "#F7F2EC" : "#191512" }}
+          style={{ color: mine ? "#FFFFFF" : isDark ? "#F7F2EC" : "#1A1A1A" }}
         >
           {message.content}
         </Text>
         <Text
           className="mt-1 text-[10px]"
           style={{
-            color: mine ? "rgba(255,255,255,0.78)" : isDark ? "#7D746C" : "#8B8178",
+            color: mine ? "rgba(255,255,255,0.78)" : isDark ? "#7D746C" : "#6B7280",
             textAlign: mine ? "right" : "left",
           }}
         >

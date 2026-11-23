@@ -190,7 +190,7 @@ export default function AiRoadmapScreen() {
           </View>
           <View
             className="mt-2 h-2 w-full overflow-hidden rounded-full"
-            style={{ backgroundColor: isDark ? "#302A24" : "#EAE1D8" }}
+            style={{ backgroundColor: isDark ? "#302A24" : "#E5E7EB" }}
           >
             <View
               className="h-full rounded-full"

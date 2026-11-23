@@ -7,5 +7,7 @@ export * from "./appointments";
 export * from "./course";
 export * from "./notifications";
 export * from "./transcript";
+export * from "./transcript-import";
 export * from "./ai";
 export * from "./token";
+export * from "./registration";
