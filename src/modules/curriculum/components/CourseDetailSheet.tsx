@@ -92,7 +92,7 @@ export function CourseDetailSheet({
   );
 }
 
-/* â”€â”€ The detail body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── The detail body ───────────────────────────────────────────────────── */
 
 function CourseDetailContent({
   detail,
@@ -231,7 +231,7 @@ function CourseDetailContent({
                   </Text>
                   {prereq.minimumScore != null ? (
                     <Badge variant="secondary" className="px-1.5 py-0">
-                      â‰¥ {prereq.minimumScore}
+                      ≥ {prereq.minimumScore}
                     </Badge>
                   ) : null}
                   {prereq.type === "CO_REQUISITE" ? (
@@ -249,7 +249,7 @@ function CourseDetailContent({
   );
 }
 
-/* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Helpers ────────────────────────────────────────────────────────────── */
 
 /**
  * Group the prerequisites by their group number.

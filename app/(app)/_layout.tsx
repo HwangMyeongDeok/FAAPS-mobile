@@ -11,6 +11,10 @@ import { useAuthStore } from "@/stores/auth";
  * `href: null` tab would bounce the user straight back to the first tab.
  * A Stack sibling keeps these routes pushable and keeps the bottom bar to
  * the four destinations that earn a permanent place.
+ *
+ * `notifications` is the exception: it is a real tab (it carries the
+ * unread badge), and this stack entry is only the compatibility shim that
+ * forwards the old `/(app)/notifications` deep link to the tab.
  */
 export default function AppLayout() {
   const status = useAuthStore((s) => s.status);
@@ -30,6 +34,7 @@ export default function AppLayout() {
     >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="study-plan" />
+      <Stack.Screen name="learning-plans" />
       <Stack.Screen name="transcript" />
       <Stack.Screen name="advising" />
       <Stack.Screen name="appointments" />

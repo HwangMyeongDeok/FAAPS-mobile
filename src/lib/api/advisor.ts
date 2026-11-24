@@ -3,7 +3,35 @@
  * with the advisor.
  */
 import { http } from "@/lib/http";
-import type { AdvisingDetail, AdvisingRequest } from "@/types";
+import type {
+  AdvisingDetail,
+  AdvisingRequest,
+  AdvisorAssignmentRequestResult,
+  AdvisorAssignmentStatus,
+} from "@/types";
+
+/**
+ * `GET /api/student/advisor-assignment`
+ *
+ * Reports whether the student already has an advisor and whether a request
+ * to the admins is still waiting. `advisorId` is null while unassigned.
+ */
+export async function getAdvisorAssignment(): Promise<AdvisorAssignmentStatus> {
+  return http.get<AdvisorAssignmentStatus>("/api/student/advisor-assignment");
+}
+
+/**
+ * `POST /api/student/advisor-assignment-requests`
+ *
+ * Asks the admins to assign an advisor. The call is idempotent: sending it
+ * again while a request is pending returns the same id with
+ * `created: false` instead of failing.
+ */
+export async function requestAdvisorAssignment(): Promise<AdvisorAssignmentRequestResult> {
+  return http.post<AdvisorAssignmentRequestResult>(
+    "/api/student/advisor-assignment-requests",
+  );
+}
 
 /** `GET /api/student/advising-requests` */
 export async function getAdvisingRequests(): Promise<AdvisingRequest[]> {

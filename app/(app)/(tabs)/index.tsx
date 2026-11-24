@@ -89,13 +89,14 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ORANGE} />}
       >
-        <DashboardTopBar unreadCount={unreadCount} onNotif={() => router.push("/(app)/notifications")} />
+        <DashboardTopBar unreadCount={unreadCount} onNotif={() => router.push("/(app)/(tabs)/notifications")} />
         <DashboardHero profile={profile} gpa={gpa} stats={stats} />
         <KpiGrid profile={profile} gpa={gpa} stats={stats} />
         <UpcomingSection appointments={appointments} advisor={advisor} />
         <QuickLinks
           links={[
             { icon: "book-open-page-variant", title: "Curriculum", onPress: () => router.push("/(app)/(tabs)/curriculum") },
+            { icon: "clipboard-check-outline", title: "Learning plans", onPress: () => router.push("/(app)/learning-plans") },
             { icon: "clipboard-text-clock-outline", title: "Study plan", onPress: () => router.push("/(app)/study-plan") },
             { icon: "file-document-outline", title: "Transcript", onPress: () => router.push("/(app)/transcript") },
             { icon: "calendar-clock", title: "Book a session", onPress: () => router.push("/(app)/appointments") },

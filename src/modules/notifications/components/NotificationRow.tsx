@@ -2,7 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-import { resolveServerRoute } from "@/lib/navigation";
+import { isSelfLink, resolveServerRoute } from "@/lib/navigation";
 import type { AppNotification } from "@/types";
 import { KIND_DOT, KIND_LABEL, ORANGE_DEEP, timeAgo } from "../format";
 
@@ -43,7 +43,7 @@ export function NotificationRow({
       }
       return;
     }
-    if (resolution.href.startsWith("/(app)/notifications")) return;
+    if (isSelfLink(resolution.href)) return;
     try {
       router.push(resolution.href);
     } catch (error) {
@@ -58,7 +58,7 @@ export function NotificationRow({
   const navigable = (() => {
     const r = resolveServerRoute(item.actionUrl);
     if (!r.ok) return false;
-    return !r.href.startsWith("/(app)/notifications");
+    return !isSelfLink(r.href);
   })();
 
   return (

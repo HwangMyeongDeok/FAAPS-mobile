@@ -4,6 +4,7 @@ export * from "./advisor";
 export * from "./appointments";
 export * from "./notifications";
 export * from "./course";
+export * from "./course-learning-plan";
 export * from "./ai";
 export * from "./transcript";
 export * from "./transcript-import";

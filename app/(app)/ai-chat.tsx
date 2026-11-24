@@ -2,10 +2,10 @@
  * FE-S-9 — AI Academic Assistant (chat).
  * Container keeps data hooks; visuals live in `src/modules/ai/components/`.
  *
- * GAP-5: không tự dính vào conversations[0]. Lần Ä‘ầu vào app (chưa chọn
- * conversation) hiá»ƒn thá»‹ empty state "Bắt Ä‘ầu trò chuyá»‡n má»›i vá»›i AI".
- * Nút Menu á»Ÿ header má»Ÿ ConversationDrawer Ä‘á»ƒ tạo/switch conversation.
- * Gửi tin nhắn lần Ä‘ầu mà chưa có conversation â†’ tự tạo má»›i trưá»›c khi gửi.
+ * GAP-5: không tự dính vào conversations[0]. Lần đầu vào app (chưa chọn
+ * conversation) hiển thị empty state "Bắt đầu trò chuyện mới với AI".
+ * Nút Menu ở header mở ConversationDrawer để tạo/switch conversation.
+ * Gửi tin nhắn lần đầu mà chưa có conversation → tự tạo mới trước khi gửi.
  *
  * DESIGN:
  * - Nền #FAFAFA, text #1A1A1A / #6B7280, accent cam FPT #F37021.
@@ -59,7 +59,7 @@ export default function AiChatScreen() {
   const { data: conversations = [] } = useAiConversations();
   const createConversation = useCreateAiConversation();
 
-  // GAP-5: không tự chọn conversations[0] — Ä‘á»ƒ null Ä‘á»ƒ hiá»‡n empty state.
+  // GAP-5: không tự chọn conversations[0] — để null để hiện empty state.
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -102,7 +102,7 @@ export default function AiChatScreen() {
     return created.id;
   }, [conversationId, createConversation]);
 
-  /** Tạo Ä‘oạn chat má»›i từ Drawer. */
+  /** Tạo đoạn chat mới từ Drawer. */
   const onNewConversation = useCallback(async () => {
     try {
       const created = await createConversation.mutateAsync();
@@ -110,12 +110,12 @@ export default function AiChatScreen() {
       setMessages([]);
       setDrawerOpen(false);
     } catch {
-      // createConversation Ä‘ã surface lá»—i qua React Query; giữ drawer má»Ÿ
-      // Ä‘á»ƒ user bấm lại thay vì crash.
+      // createConversation đã surface lỗi qua React Query; giữ drawer mở
+      // để user bấm lại thay vì crash.
     }
   }, [createConversation]);
 
-  /** Switch conversation từ Drawer: Ä‘óng drawer, thread sync theo query. */
+  /** Switch conversation từ Drawer: đóng drawer, thread sync theo query. */
   const onSelectConversation = useCallback((id: string) => {
     setConversationId(id);
     setMessages([]);
@@ -146,7 +146,7 @@ export default function AiChatScreen() {
       scrollToEnd();
 
       try {
-        // Chưa có conversation â†’ tạo má»›i trưá»›c khi gửi.
+        // Chưa có conversation → tạo mới trước khi gửi.
         const id = await ensureConversation();
         const answer = await send.mutateAsync({ conversationId: id, content });
         setMessages((prev) => [...prev, answer.assistantMessage]);
@@ -158,7 +158,7 @@ export default function AiChatScreen() {
             conversationId: conversationId ?? "",
             sender: "ASSISTANT",
             content:
-              "Không gửi Ä‘ược câu hỏi lúc này. Kiá»ƒm tra kết ná»‘i mạng rá»“i thử lại.",
+              "Không gửi được câu hỏi lúc này. Kiểm tra kết nối mạng rồi thử lại.",
             questionCategory: null,
             isUnsupported: false,
             isFallback: true,
@@ -213,11 +213,11 @@ export default function AiChatScreen() {
             />
           </Pressable>
 
-          {/* Nút menu â†’ má»Ÿ Drawer há»™i thoại */}
+          {/* Nút menu → mở Drawer hội thoại */}
           <Pressable
             onPress={() => setDrawerOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel="Má»Ÿ danh sách cuá»™c trò chuyá»‡n"
+            accessibilityLabel="Mở danh sách cuộc trò chuyện"
             hitSlop={8}
             className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 active:scale-95"
             style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
@@ -310,7 +310,7 @@ export default function AiChatScreen() {
           {showSuggestions && !isThinking ? (
             <View className="mt-5">
               <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
-                Bạn có thá»ƒ hỏi
+                Bạn có thể hỏi
               </Text>
               <View className="mt-2.5 gap-2">
                 {AI_PROMPT_SUGGESTIONS.map((s) => (
@@ -345,7 +345,7 @@ export default function AiChatScreen() {
 
           {messages.length > 0 ? (
             <Text className="mt-6 text-center text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-              AI có thá»ƒ mắc lá»—i. Hãy kiá»ƒm tra nguá»“n trích dẫn trưá»›c khi Ä‘Äƒng ký môn học.
+              AI có thể mắc lỗi. Hãy kiểm tra nguồn trích dẫn trước khi đăng ký môn học.
             </Text>
           ) : null}
         </ScrollView>
@@ -409,7 +409,7 @@ export default function AiChatScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Drawer danh sách há»™i thoại */}
+      {/* Drawer danh sách hội thoại */}
       <ConversationDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

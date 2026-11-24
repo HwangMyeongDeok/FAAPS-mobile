@@ -20,8 +20,8 @@
 /**
  * Every route the app can actually show.
  *
- * Kept in sync with the files under `app/`: the four tabs plus the seven
- * screens pushed above the tab bar.
+ * Kept in sync with the files under `app/`: the tabs plus the screens
+ * pushed above the tab bar.
  */
 export const APP_ROUTES = [
   "/(app)",
@@ -29,6 +29,7 @@ export const APP_ROUTES = [
   "/(app)/(tabs)/index",
   "/(app)/(tabs)/courses",
   "/(app)/(tabs)/curriculum",
+  "/(app)/(tabs)/notifications",
   "/(app)/(tabs)/profile",
   "/(app)/study-plan",
   "/(app)/transcript",
@@ -107,9 +108,9 @@ const BACKEND_ROUTE_RULES: readonly RouteRule[] = [
   // Notifications
   {
     pattern: /^\/student\/notifications?(?:\/.*)?$/i,
-    href: "/(app)/notifications",
+    href: "/(app)/(tabs)/notifications",
   },
-  { pattern: /^\/notifications?(?:\/.*)?$/i, href: "/(app)/notifications" },
+  { pattern: /^\/notifications?(?:\/.*)?$/i, href: "/(app)/(tabs)/notifications" },
 
   // AI assistant & roadmap
   { pattern: /^\/student\/ai\/roadmap(?:\/.*)?$/i, href: "/(app)/ai-roadmap" },
@@ -220,4 +221,20 @@ export function resolveServerRoute(url: string | null | undefined): RouteResolut
 /** True when the URL resolves to a route the app can show. */
 export function isKnownServerRoute(url: string | null | undefined): boolean {
   return resolveServerRoute(url).ok;
+}
+
+/**
+ * True when an app route points back at the notification centre itself.
+ *
+ * A notification whose link is "go to the notifications" must not push a
+ * new screen when tapped — the student is already there. The centre lives
+ * in the bottom navigation now (`/(app)/(tabs)/notifications`); the old
+ * `/(app)/notifications` path is kept because a server link may still
+ * carry it verbatim.
+ */
+export function isSelfLink(href: string): boolean {
+  return (
+    href.startsWith("/(app)/(tabs)/notifications") ||
+    href.startsWith("/(app)/notifications")
+  );
 }

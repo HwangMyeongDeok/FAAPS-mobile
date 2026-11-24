@@ -1,14 +1,8 @@
 import { Pressable, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
-import { cardShadow } from "@/lib/shadow";
-import {
-  MONTHS,
-  ORANGE,
-  longDate,
-  monthCells,
-  toISODate,
-} from "../format";
+import { AppCard } from "@/components/ui/AppCard";
+import { MONTHS, longDate, monthCells, toISODate } from "../format";
 
 interface MonthCalendarProps {
   monthCursor: Date;
@@ -20,45 +14,41 @@ interface MonthCalendarProps {
   onPickDate: (iso: string) => void;
 }
 
+const ORANGE = "#F37021";
+const INK = "#1A1A1A";
+const MUTED = "#6B7280";
+
 /**
  * Month calendar — 42 cells starting Monday, today ring, selected day in
- * flat orange, appointment dots, legend. 40px touch targets.
+ * flat orange, appointment dots. 40px touch targets.
  */
 export function MonthCalendar({
   monthCursor,
   selectedDate,
   todayISO,
   upcomingDates,
-  isDark,
   onShiftMonth,
   onPickDate,
 }: MonthCalendarProps) {
   return (
-    <View className="px-5 pt-4">
-      <View
-        className="rounded-3xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
-        style={cardShadow(isDark)}
-      >
+    <View className="px-5 pt-5">
+      <AppCard padded={false} className="p-4">
         <View className="flex-row items-center justify-between">
           <Pressable
             onPress={() => onShiftMonth(-1)}
             hitSlop={12}
             accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
-            style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
+            accessibilityLabel="Tháng trước"
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+            style={{ backgroundColor: "#F3F4F6" }}
           >
-            <MaterialCommunityIcons
-              name="chevron-left"
-              size={22}
-              color={isDark ? "#FFA371" : "#B45309"}
-            />
+            <ChevronLeft size={18} color={INK} />
           </Pressable>
           <View className="items-center">
-            <Text className="text-[16px] font-bold text-ink dark:text-ink-dark">
+            <Text className="text-[15px]" style={{ color: INK, fontWeight: "700" }}>
               {MONTHS[monthCursor.getMonth()]} {monthCursor.getFullYear()}
             </Text>
-            <Text className="mt-0.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
+            <Text className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
               {longDate(selectedDate)}
             </Text>
           </View>
@@ -66,22 +56,18 @@ export function MonthCalendar({
             onPress={() => onShiftMonth(1)}
             hitSlop={12}
             accessibilityRole="button"
-            accessibilityLabel="Next month"
-            className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
-            style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
+            accessibilityLabel="Tháng sau"
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+            style={{ backgroundColor: "#F3F4F6" }}
           >
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={22}
-              color={isDark ? "#FFA371" : "#B45309"}
-            />
+            <ChevronRight size={18} color={INK} />
           </Pressable>
         </View>
 
         <View className="mt-3 flex-row">
           {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((w) => (
             <View key={w} className="flex-1 items-center py-1">
-              <Text className="text-[11px] font-bold text-ink-faint dark:text-ink-faint-dark">
+              <Text className="text-[11px]" style={{ color: MUTED, fontWeight: "700" }}>
                 {w}
               </Text>
             </View>
@@ -107,45 +93,32 @@ export function MonthCalendar({
                   accessibilityLabel={`${d.getDate()}/${d.getMonth() + 1}`}
                   className="items-center justify-center rounded-full active:opacity-70"
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 38,
+                    height: 38,
                     backgroundColor: isSelected ? ORANGE : "transparent",
                     borderWidth: isToday && !isSelected ? 1.5 : 0,
                     borderColor: ORANGE,
-                    opacity: !inMonth ? 0.35 : disabled ? 0.4 : 1,
+                    opacity: !inMonth ? 0.3 : disabled ? 0.35 : 1,
                   }}
                 >
                   <Text
-                    className="text-sm font-semibold tabular-nums"
+                    className="text-[13px] tabular-nums"
                     style={{
-                      color: isSelected
-                        ? "#fff"
-                        : !inMonth
-                          ? isDark
-                            ? "#7D746C"
-                            : "#B4A79C"
-                          : disabled
-                            ? isDark
-                              ? "#5A534B"
-                              : "#B4A79C"
-                            : isDark
-                              ? "#F7F2EC"
-                              : "#1A1A1A",
-                      fontWeight: isSelected || isToday ? "700" : "600",
+                      color: isSelected ? "#FFFFFF" : disabled || !inMonth ? "#9CA3AF" : INK,
+                      fontWeight: isSelected || isToday ? "700" : "500",
                     }}
                   >
                     {d.getDate()}
                   </Text>
-                  {hasAppt && !isSelected ? (
+                  {hasAppt ? (
                     <View
                       className="absolute rounded-full"
-                      style={{ width: 5, height: 5, bottom: 6, backgroundColor: ORANGE }}
-                    />
-                  ) : null}
-                  {isSelected && hasAppt ? (
-                    <View
-                      className="absolute rounded-full bg-white"
-                      style={{ width: 5, height: 5, bottom: 6 }}
+                      style={{
+                        width: 4,
+                        height: 4,
+                        bottom: 5,
+                        backgroundColor: isSelected ? "#FFFFFF" : ORANGE,
+                      }}
                     />
                   ) : null}
                 </Pressable>
@@ -157,18 +130,24 @@ export function MonthCalendar({
         <View className="mt-2 flex-row items-center gap-4 px-1">
           <View className="flex-row items-center gap-1.5">
             <View className="h-2 w-2 rounded-full" style={{ backgroundColor: ORANGE }} />
-            <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">Selected</Text>
+            <Text className="text-[11px]" style={{ color: MUTED }}>
+              Đã chọn
+            </Text>
           </View>
           <View className="flex-row items-center gap-1.5">
             <View className="h-2 w-2 rounded-full border" style={{ borderColor: ORANGE }} />
-            <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">Today</Text>
+            <Text className="text-[11px]" style={{ color: MUTED }}>
+              Hôm nay
+            </Text>
           </View>
           <View className="flex-row items-center gap-1.5">
             <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ORANGE }} />
-            <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">Has a session</Text>
+            <Text className="text-[11px]" style={{ color: MUTED }}>
+              Có buổi gặp
+            </Text>
           </View>
         </View>
-      </View>
+      </AppCard>
     </View>
   );
 }

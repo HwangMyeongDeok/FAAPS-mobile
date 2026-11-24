@@ -6,8 +6,8 @@ import { ORANGE, ORANGE_DEEP } from "../format";
 
 /**
  * DESIGN (AI Chat polish):
- * - User bubble: nền cam FPT #F37021, text trắng, cÄƒn phải.
- * - AI bubble: nền xám nhạt #F3F4F6, text Ä‘en #1A1A1A, cÄƒn trái.
+ * - User bubble: nền cam FPT #F37021, text trắng, căn phải.
+ * - AI bubble: nền xám nhạt #F3F4F6, text đen #1A1A1A, căn trái.
  * - Không gradient / neon. Whitespace thoáng (mb-3/4, px-4 py-3).
  */
 export const FPT_ORANGE = "#F37021";
@@ -21,11 +21,11 @@ export function EmptyChatState() {
         <MaterialCommunityIcons name="robot-happy-outline" size={30} color={ORANGE_DEEP} />
       </View>
       <Text className="mt-4 text-center text-[15px] font-bold text-ink dark:text-ink-dark">
-        Bắt Ä‘ầu trò chuyá»‡n má»›i vá»›i AI
+        Bắt đầu trò chuyện mới với AI
       </Text>
       <Text className="mt-1.5 text-center text-[13px] leading-5 text-ink-muted dark:text-ink-muted-dark">
-        Trợ lý Ä‘ọc chương trình Ä‘ào tạo, quy chế học vụ và Ä‘ề cương môn học của
-        bạn — rá»“i trả lời kèm nguá»“n trích dẫn Ä‘á»ƒ bạn kiá»ƒm chứng.
+        Trợ lý đọc chương trình đào tạo, quy chế học vụ và đề cương môn học của
+        bạn — rồi trả lời kèm nguồn trích dẫn để bạn kiểm chứng.
       </Text>
     </View>
   );

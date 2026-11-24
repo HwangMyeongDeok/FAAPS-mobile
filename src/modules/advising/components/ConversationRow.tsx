@@ -1,65 +1,57 @@
-import { Pressable, Text, View, useColorScheme } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Pressable, Text, View } from "react-native";
+import { MessageCircle } from "lucide-react-native";
+
+import { AppCard } from "@/components/ui/AppCard";
+import { StatusBadge } from "@/components/ui/status";
 import type { AdvisingRequest } from "@/types";
-import { ORANGE_DEEP, STATUS_LABEL, timeAgo } from "../format";
+import { timeAgo } from "../format";
 
 interface ConversationRowProps {
   conversation: AdvisingRequest;
   onPress: () => void;
 }
 
-/** One inbox row: open threads bold with tinted icon, closed ones muted. */
+const ORANGE = "#F37021";
+const INK = "#1A1A1A";
+const MUTED = "#6B7280";
+
+/** One inbox card: icon, title, status badge + relative time. */
 export function ConversationRow({ conversation, onPress }: ConversationRowProps) {
-  const isDark = useColorScheme() === "dark";
   const open =
     conversation.status === "PENDING" ||
     conversation.status === "OPEN" ||
     conversation.status === "IN_PROGRESS";
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={conversation.title}
-      className="flex-row items-center gap-3 py-4 active:opacity-70"
+      accessibilityLabel={`${conversation.title}, ${conversation.status}`}
+      className="active:opacity-80"
     >
-      <View
-        className="h-11 w-11 items-center justify-center rounded-full"
-        style={{
-          backgroundColor: open
-            ? isDark
-              ? "#2E1C0E"
-              : "#FFE5D4"
-            : isDark
-              ? "#241F1B"
-              : "#F3F4F6",
-        }}
-      >
-        <MaterialCommunityIcons
-          name="message-text-outline"
-          size={20}
-          color={open ? (isDark ? "#FFA371" : ORANGE_DEEP) : isDark ? "#7D746C" : "#6B7280"}
-        />
-      </View>
-      <View className="flex-1">
-        <Text
-          className="text-[15px] leading-5 text-ink dark:text-ink-dark"
-          style={{ fontWeight: open ? "700" : "500" }}
-          numberOfLines={1}
+      <AppCard className="flex-row items-center gap-3">
+        <View
+          className="h-11 w-11 items-center justify-center rounded-full"
+          style={{ backgroundColor: open ? "#FFF1E7" : "#F3F4F6" }}
         >
-          {conversation.title}
-        </Text>
-        <Text className="mt-0.5 text-[11px] text-ink-faint dark:text-ink-faint-dark">
-          {STATUS_LABEL[conversation.status] ?? conversation.status} ·{" "}
-          {timeAgo(conversation.updatedAt)}
-        </Text>
-      </View>
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={20}
-        color={isDark ? "#4A423B" : "#C3B8AD"}
-      />
+          <MessageCircle size={19} color={open ? ORANGE : MUTED} />
+        </View>
+        <View className="flex-1">
+          <Text
+            className="text-[15px] leading-5"
+            style={{ color: INK, fontWeight: open ? "700" : "600" }}
+            numberOfLines={1}
+          >
+            {conversation.title}
+          </Text>
+          <View className="mt-1.5 flex-row items-center gap-2">
+            <StatusBadge status={conversation.status} />
+            <Text className="text-[11px]" style={{ color: MUTED }}>
+              {timeAgo(conversation.updatedAt)}
+            </Text>
+          </View>
+        </View>
+      </AppCard>
     </Pressable>
   );
 }
-
-/* v1 row — kept stable for inbox list virtualization. */

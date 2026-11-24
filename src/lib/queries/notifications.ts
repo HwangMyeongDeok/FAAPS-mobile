@@ -16,6 +16,9 @@ export const notificationKeys = {
   unreadCount: () => ["notifications", "unread-count"] as const,
 };
 
+/** How often the unread badge refreshes itself while the app is in front. */
+export const UNREAD_COUNT_POLL_INTERVAL = 30_000;
+
 export function useNotifications() {
   return useQuery({
     queryKey: notificationKeys.list(),
@@ -29,6 +32,8 @@ export function useUnreadCount() {
     queryKey: notificationKeys.unreadCount(),
     queryFn: getUnreadCount,
     staleTime: 60_000,
+    refetchInterval: UNREAD_COUNT_POLL_INTERVAL,
+    refetchIntervalInBackground: false,
   });
 }
 

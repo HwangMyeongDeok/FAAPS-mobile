@@ -48,7 +48,7 @@ export function TermCard({
               {semester.name}
             </Text>
             <Text className="mt-0.5 text-[11px] text-ink-muted tabular-nums dark:text-ink-muted-dark">
-              {semester.code} · {semester.startDate} â†’ {semester.endDate}
+              {semester.code} · {semester.startDate} → {semester.endDate}
             </Text>
           </View>
           <View

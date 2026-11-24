@@ -1,8 +1,7 @@
 import { Pressable, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { ChevronLeft, RefreshCw } from "lucide-react-native";
 
 import { goBack } from "@/components/ScreenHeader";
-import { ORANGE } from "../format";
 
 interface RoadmapHeaderProps {
   isDark: boolean;
@@ -12,38 +11,26 @@ interface RoadmapHeaderProps {
 }
 
 /** Screen header: back, title, single "Regenerate" primary action. */
-export function RoadmapHeader({
-  isDark,
-  isRegenerating,
-  onRegenerate,
-  subtitle,
-}: RoadmapHeaderProps) {
+export function RoadmapHeader({ isRegenerating, onRegenerate, subtitle }: RoadmapHeaderProps) {
   return (
-    <View className="border-b border-line bg-surface px-4 pb-3 pt-2 dark:border-line-dark dark:bg-surface-dark">
+    <View className="border-b border-[#E5E7EB] bg-white px-4 pb-3 pt-2">
       <View className="flex-row items-center gap-2">
         <Pressable
           onPress={goBack}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel="Quay lại"
           hitSlop={10}
           className="-ml-1 h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <MaterialCommunityIcons
-            name="chevron-left"
-            size={26}
-            color={isDark ? "#F7F2EC" : "#1A1A1A"}
-          />
+          <ChevronLeft size={24} color="#1A1A1A" />
         </Pressable>
 
         <View className="flex-1">
-          <Text
-            accessibilityRole="header"
-            className="text-[17px] font-bold text-ink dark:text-ink-dark"
-          >
-            AI study roadmap
+          <Text accessibilityRole="header" className="text-[17px]" style={{ color: "#1A1A1A", fontWeight: "700" }}>
+            Lộ trình AI
           </Text>
-          <Text className="text-[11px] text-ink-muted dark:text-ink-muted-dark">
-            {subtitle ?? "The AI's proposal for your remaining semesters"}
+          <Text className="text-[11px]" style={{ color: "#6B7280" }}>
+            {subtitle ?? "Đề xuất của AI cho các học kỳ còn lại"}
           </Text>
         </View>
 
@@ -51,12 +38,14 @@ export function RoadmapHeader({
           onPress={onRegenerate}
           disabled={isRegenerating}
           accessibilityRole="button"
-          accessibilityLabel="Regenerate the roadmap"
-          className="flex-row items-center gap-1.5 rounded-full px-3.5 py-2.5 active:opacity-80"
-          style={{ backgroundColor: ORANGE, opacity: isRegenerating ? 0.7 : 1 }}
+          accessibilityLabel="Tạo lại lộ trình"
+          className="flex-row items-center gap-1.5 rounded-xl px-3.5 py-2.5 active:opacity-80"
+          style={{ backgroundColor: "#F37021", opacity: isRegenerating ? 0.6 : 1 }}
         >
-          <MaterialCommunityIcons name="refresh" size={15} color="#FFFFFF" />
-          <Text className="text-[12px] font-bold text-white">Regenerate</Text>
+          <RefreshCw size={14} color="#FFFFFF" />
+          <Text className="text-[12px]" style={{ color: "#FFFFFF", fontWeight: "700" }}>
+            Tạo lại
+          </Text>
         </Pressable>
       </View>
     </View>

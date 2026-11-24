@@ -1,6 +1,6 @@
 import { LogIn, Sparkles } from "lucide-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -101,18 +101,31 @@ export default function SignIn() {
             <Text className="text-xs font-semibold text-foreground mb-1.5 mt-4">
               Password
             </Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Your password"
-              placeholderTextColor="#94A3B8"
-              secureTextEntry
-              autoCapitalize="none"
-              editable={!loading}
-              onSubmitEditing={onSubmit}
-              returnKeyType="go"
-              className="rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground"
-            />
+            <View className="flex-row items-center justify-between">
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Your password"
+                placeholderTextColor="#94A3B8"
+                secureTextEntry
+                autoCapitalize="none"
+                editable={!loading}
+                onSubmitEditing={onSubmit}
+                returnKeyType="go"
+                className="flex-1 rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground"
+              />
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Quên mật khẩu?"
+                onPress={() => router.push("/(auth)/forgot-password")}
+                hitSlop={8}
+                className="ml-3 active:opacity-70"
+              >
+                <Text style={{ color: FPT_ORANGE, fontWeight: "600", fontSize: 13 }}>
+                  Quên mật khẩu?
+                </Text>
+              </Pressable>
+            </View>
 
             {error ? (
               <Text className="mt-3 text-xs font-semibold text-red-500">
@@ -143,7 +156,7 @@ export default function SignIn() {
             By continuing, you agree to the FAAPS terms of use.
           </Text>
 
-          {/* Link sang màn hình Ä‘Äƒng ký */}
+          {/* Link sang màn hình đăng ký */}
           <View className="mt-4 flex-row items-center justify-center gap-1.5">
             <Text className="text-[13px]" style={{ color: MUTED }}>
               Chưa có tài khoản?
@@ -154,7 +167,7 @@ export default function SignIn() {
               suppressHighlighting
               style={{ color: FPT_ORANGE, fontWeight: "600" }}
             >
-              ĐÄƒng ký
+              Đăng ký
             </Text>
           </View>
         </View>

@@ -1,9 +1,10 @@
 import { Pressable, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Clock, MessageSquare, X } from "lucide-react-native";
 
-import { cardShadow } from "@/lib/shadow";
+import { AppCard } from "@/components/ui/AppCard";
+import { AppBadge } from "@/components/ui/AppBadge";
 import type { BookedAppointment } from "@/types";
-import { ORANGE, dateOf, shortDate, timeOf } from "../format";
+import { dateOf, shortDate, timeOf } from "../format";
 
 interface AppointmentCardProps {
   appointment: BookedAppointment;
@@ -13,100 +14,80 @@ interface AppointmentCardProps {
   onCancel: () => void;
 }
 
+const ORANGE = "#F37021";
+const INK = "#1A1A1A";
+const MUTED = "#6B7280";
+
 /** One upcoming session: date band, reason, status, cancel action. */
 export function AppointmentCard({
   appointment,
   advisorName,
-  isDark,
   highlight,
   onCancel,
 }: AppointmentCardProps) {
   const v = shortDate(dateOf(appointment.startTime));
   return (
-    <View
-      className="overflow-hidden rounded-3xl border bg-surface dark:bg-surface-dark"
-      style={[
-        {
-          borderColor: highlight ? ORANGE : isDark ? "#302A24" : "#E5E7EB",
-          borderWidth: highlight ? 2 : 1,
-        },
-        cardShadow(isDark),
-      ]}
+    <AppCard
+      padded={false}
+      className="overflow-hidden"
+      style={highlight ? { borderColor: ORANGE, borderWidth: 1.5 } : undefined}
     >
-      <View
-        className="flex-row items-center gap-3 px-4 py-3"
-        style={{ backgroundColor: isDark ? "#241F1B" : "#FFF6EE" }}
-      >
+      <View className="flex-row items-center gap-3 border-b border-[#E5E7EB] px-4 py-3">
         <View
-          className="items-center justify-center rounded-2xl px-3 py-1.5"
+          className="items-center justify-center rounded-xl px-3 py-1.5"
           style={{ backgroundColor: ORANGE, minWidth: 58 }}
         >
-          <Text className="text-lg font-bold leading-5 text-white tabular-nums">
+          <Text className="text-[18px] leading-5 tabular-nums" style={{ color: "#FFFFFF", fontWeight: "700" }}>
             {v.day}
           </Text>
-          <Text className="text-[10px] font-bold text-white">
+          <Text className="text-[10px]" style={{ color: "#FFFFFF", fontWeight: "700" }}>
             {v.mon} · {v.dow}
           </Text>
         </View>
         <View className="flex-1">
-          <Text className="text-[15px] font-bold text-ink tabular-nums dark:text-ink-dark">
+          <Text className="text-[15px] tabular-nums" style={{ color: INK, fontWeight: "700" }}>
             {timeOf(appointment.startTime)} – {timeOf(appointment.endTime)}
           </Text>
-          <Text
-            className="mt-0.5 text-[11px] text-ink-muted dark:text-ink-muted-dark"
-            numberOfLines={1}
-          >
+          <Text className="mt-0.5 text-[11px]" style={{ color: MUTED }} numberOfLines={1}>
             {advisorName}
           </Text>
         </View>
-        {highlight ? (
-          <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: ORANGE }}>
-            <Text className="text-[10px] font-bold text-white">NEW</Text>
-          </View>
-        ) : null}
+        <AppBadge
+          label={appointment.status === "PENDING" ? "Chờ xác nhận" : "Đã xác nhận"}
+          tone={appointment.status === "PENDING" ? "primary" : "success"}
+        />
       </View>
       <View className="px-4 py-3">
         <View className="flex-row gap-2">
-          <MaterialCommunityIcons
-            name="message-text-outline"
-            size={15}
-            color={isDark ? "#FFA371" : "#B45309"}
-            style={{ marginTop: 2 }}
-          />
-          <Text className="flex-1 text-[13px] leading-5 text-ink dark:text-ink-dark">
+          <MessageSquare size={15} color={MUTED} style={{ marginTop: 2 }} />
+          <Text className="flex-1 text-[13px] leading-5" style={{ color: INK }}>
             {appointment.reason}
           </Text>
         </View>
         <View className="mt-3 flex-row gap-2.5">
           <View
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl py-3"
-            style={{ backgroundColor: isDark ? "#241F1B" : "#F3F4F6" }}
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2.5"
+            style={{ backgroundColor: "#F3F4F6" }}
           >
-            <MaterialCommunityIcons
-              name="clock-outline"
-              size={16}
-              color={isDark ? "#FFA371" : "#B45309"}
-            />
-            <Text
-              className="text-xs font-bold"
-              style={{ color: isDark ? "#FFA371" : "#B45309" }}
-            >
-              {appointment.status === "PENDING" ? "Awaiting confirmation" : "Confirmed"}
+            <Clock size={15} color={MUTED} />
+            <Text className="text-[12px]" style={{ color: MUTED, fontWeight: "600" }}>
+              {appointment.status === "PENDING" ? "Chờ xác nhận" : "Đã xác nhận"}
             </Text>
           </View>
           <Pressable
             onPress={onCancel}
             accessibilityRole="button"
-            accessibilityLabel="Cancel this session"
-            className="flex-1 items-center justify-center rounded-2xl border py-3 active:opacity-70 active:scale-[0.98]"
-            style={{ borderColor: "#FECACA", backgroundColor: isDark ? "#2A1512" : "#fff" }}
+            accessibilityLabel="Huỷ buổi gặp này"
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border py-2.5 active:opacity-70"
+            style={{ borderColor: "#FECACA", backgroundColor: "#FFFFFF" }}
           >
-            <Text className="text-xs font-bold" style={{ color: "#EF4444" }}>
-              Cancel
+            <X size={14} color="#EF4444" />
+            <Text className="text-[12px]" style={{ color: "#EF4444", fontWeight: "700" }}>
+              Huỷ
             </Text>
           </Pressable>
         </View>
       </View>
-    </View>
+    </AppCard>
   );
 }
