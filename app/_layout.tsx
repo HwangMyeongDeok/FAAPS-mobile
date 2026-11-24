@@ -8,6 +8,7 @@ import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/stores/auth";
+import { useAppFocusManager } from "@/hooks/useAppFocusManager";
 import { useWebDarkMode } from "@/hooks/useWebDarkMode";
 
 export default function RootLayout() {
@@ -16,6 +17,11 @@ export default function RootLayout() {
   const status = useAuthStore((s) => s.status);
 
   useWebDarkMode();
+
+  // Tell TanStack Query when the app is actually in the foreground, so
+  // polling queries (e.g. the unread notification count) pause while the
+  // app is in the background instead of draining the battery.
+  useAppFocusManager();
 
   useEffect(() => {
     hydrate();

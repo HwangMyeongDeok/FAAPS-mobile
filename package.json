@@ -57,6 +57,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "check:routes": "node scripts/check-routes.cjs",
+    "check:polling": "node scripts/verify-notification-polling.cjs",
     "typecheck": "tsc --noEmit"
   },
   "private": true

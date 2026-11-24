@@ -6,25 +6,29 @@
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, Text, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MessageCircle, Plus } from "lucide-react-native";
 import { useLocalSearchParams, router } from "expo-router";
 
 import { ScreenHeader, goBack } from "@/components/ScreenHeader";
 import { Sheet } from "@/components/ui";
-import { ErrorBlock, EmptyBlock, LoadingBlock } from "@/components/feedback";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorBlock, LoadingBlock } from "@/components/feedback";
 import {
   useAdvisingRequests,
+  useAdvisorAssignment,
   useCreateAdvisingRequest,
+  useRequestAdvisorAssignment,
 } from "@/lib/queries/advisor";
 import { useMyAdvisor } from "@/lib/queries/profile";
 import { ORANGE } from "@/modules/advising/format";
+import { AdvisorAssignmentCard } from "@/modules/advising/components/AdvisorAssignmentCard";
 import { ConversationRow } from "@/modules/advising/components/ConversationRow";
 import { Thread } from "@/modules/advising/components/Thread";
 import { NewRequestSheet } from "@/modules/advising/components/NewRequestSheet";
 
 export default function AdvisingScreen() {
   const { conversation } = useLocalSearchParams<{ conversation?: string }>();
-  const { data: advisor } = useMyAdvisor();
+  const { data: advisor, refetch: refetchAdvisor } = useMyAdvisor();
 
   const [activeId, setActiveId] = useState<string | null>(conversation ?? null);
   const [lastLink, setLastLink] = useState(conversation);
@@ -41,6 +45,19 @@ export default function AdvisingScreen() {
   const { data: conversations = [], isLoading, isError, refetch, isRefetching } = useAdvisingRequests();
   const isDark = useColorScheme() === "dark";
   const createRequest = useCreateAdvisingRequest();
+
+  // Advisor assignment — the student may not have an advisor yet, in which
+  // case the screen offers a way to ask the academic office for one.
+  const {
+    data: assignment,
+    isError: assignmentError,
+    refetch: refetchAssignment,
+  } = useAdvisorAssignment();
+  const requestAdvisor = useRequestAdvisorAssignment();
+  const [assignmentErrorText, setAssignmentErrorText] = useState<string | null>(null);
+
+  const hasAdvisor = !!advisor;
+  const pendingRequest = !!assignment?.pendingRequestId;
 
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
@@ -73,6 +90,26 @@ export default function AdvisingScreen() {
     );
   };
 
+  const onRequestAdvisor = () => {
+    setAssignmentErrorText(null);
+    requestAdvisor.mutate(undefined, {
+      onSuccess: () => {
+        // The backend answers 409 when the student already has an advisor —
+        // refetch so the card settles on the real state either way.
+        refetchAssignment();
+        refetchAdvisor();
+      },
+      onError: (error) => {
+        setAssignmentErrorText(
+          error instanceof Error
+            ? error.message
+            : "Không thể gửi yêu cầu. Vui lòng thử lại.",
+        );
+        refetchAssignment();
+      },
+    });
+  };
+
   if (active) {
     return (
       <Thread
@@ -88,8 +125,8 @@ export default function AdvisingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
-        title="Advising"
-        subtitle="Talk directly to your assigned advisor"
+        title="Cố vấn học tập"
+        subtitle="Trao đổi trực tiếp với cố vấn của bạn"
         onBack={goBack}
         right={
           <Pressable
@@ -98,25 +135,27 @@ export default function AdvisingScreen() {
               setComposing(true);
             }}
             accessibilityRole="button"
-            accessibilityLabel="Create a new advising request"
-            className="flex-row items-center gap-1.5 rounded-full px-3.5 py-2.5 active:opacity-80 active:scale-95"
+            accessibilityLabel="Tạo yêu cầu tư vấn mới"
+            className="flex-row items-center gap-1.5 rounded-xl px-3.5 py-2.5 active:opacity-80"
             style={{ backgroundColor: ORANGE }}
           >
-            <MaterialCommunityIcons name="plus" size={15} color="#FFFFFF" />
-            <Text className="text-xs font-bold text-white">New request</Text>
+            <Plus size={15} color="#FFFFFF" />
+            <Text className="text-xs" style={{ color: "#FFFFFF", fontWeight: "700" }}>
+              Yêu cầu mới
+            </Text>
           </Pressable>
         }
       />
 
       {isLoading ? (
         <View className="flex-1 px-5 pt-6">
-          <LoadingBlock message="Loading your conversations…" />
+          <LoadingBlock message="Đang tải hội thoại…" />
         </View>
       ) : isError ? (
         <View className="flex-1 px-5 pt-6">
           <ErrorBlock
-            title="Could not load conversations"
-            message="Check your connection and pull down to try again."
+            title="Không tải được hội thoại"
+            message="Kiểm tra kết nối rồi kéo xuống để thử lại."
             onRetry={() => refetch()}
           />
         </View>
@@ -125,22 +164,40 @@ export default function AdvisingScreen() {
           data={conversations}
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
-          ItemSeparatorComponent={() => <View className="h-px bg-rule dark:bg-rule-dark" />}
+          ItemSeparatorComponent={() => <View className="h-3" />}
           refreshing={isRefetching}
           onRefresh={() => refetch()}
+          ListHeaderComponent={
+            // Chưa có cố vấn → mời sinh viên gửi yêu cầu phân công.
+            hasAdvisor || assignmentError ? undefined : (
+              <View className="mb-4">
+                <AdvisorAssignmentCard
+                  hasAdvisor={hasAdvisor}
+                  pending={pendingRequest}
+                  submitting={requestAdvisor.isPending}
+                  error={assignmentErrorText}
+                  isDark={isDark}
+                  onRequest={onRequestAdvisor}
+                />
+              </View>
+            )
+          }
           ListEmptyComponent={
-            <View className="pt-6">
-              <EmptyBlock
-                icon="message-text-outline"
-                title="No conversations yet"
-                message="When your advisor replies to a question, the conversation shows up here."
-                actionLabel="Create a request"
-                onAction={() => {
-                  setFormError(null);
-                  setComposing(true);
-                }}
-              />
-            </View>
+            hasAdvisor ? (
+              <View className="pt-10">
+                <EmptyState
+                  muted
+                  icon={<MessageCircle size={26} color="#9CA3AF" />}
+                  title="Chưa có hội thoại nào"
+                  message="Khi cố vấn trả lời câu hỏi của bạn, cuộc trò chuyện sẽ xuất hiện ở đây."
+                  actionLabel="Tạo yêu cầu"
+                  onAction={() => {
+                    setFormError(null);
+                    setComposing(true);
+                  }}
+                />
+              </View>
+            ) : undefined
           }
           renderItem={({ item }) => (
             <ConversationRow conversation={item} onPress={() => setActiveId(item.id)} />

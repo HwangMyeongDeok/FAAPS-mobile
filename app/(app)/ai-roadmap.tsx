@@ -4,14 +4,16 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, useColorScheme, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { BookOpen, GraduationCap, Sparkles } from "lucide-react-native";
 import { router } from "expo-router";
 
-import { ErrorBlock, EmptyBlock, LoadingBlock } from "@/components/feedback";
+import { AppCard } from "@/components/ui/AppCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
+import { ErrorBlock } from "@/components/feedback";
 import { useAiRoadmap, useRegenerateAiRoadmap } from "@/lib/queries/ai";
-import { ORANGE, ORANGE_DEEP } from "@/modules/ai/format";
 import { RoadmapHeader } from "@/modules/ai/components/RoadmapHeader";
 import { TermNode } from "@/modules/ai/components/TermNode";
 
@@ -22,7 +24,6 @@ const ROADMAP_PLANS: { goal: string; maxCreditsPerSemester: number; note?: strin
 ];
 
 export default function AiRoadmapScreen() {
-  const isDark = useColorScheme() === "dark";
   const { data: roadmap, isLoading, isError, refetch } = useAiRoadmap();
   const regenerate = useRegenerateAiRoadmap();
 
@@ -44,9 +45,18 @@ export default function AiRoadmapScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <RoadmapHeader isDark={isDark} isRegenerating={false} onRegenerate={onRegenerate} />
+        <RoadmapHeader isDark={false} isRegenerating={false} onRegenerate={onRegenerate} />
         <View className="flex-1 px-5 pt-4">
-          <LoadingBlock message="The AI is laying out your semesters…" />
+          <View className="flex-row gap-3">
+            <SkeletonBlock height={92} radius={16} className="flex-1" />
+            <SkeletonBlock height={92} radius={16} className="flex-1" />
+          </View>
+          <SkeletonBlock height={72} radius={16} className="mt-3" />
+          <SkeletonBlock height={84} radius={16} className="mt-4" />
+          <SkeletonBlock height={84} radius={16} className="mt-3" />
+          <View className="mt-6 items-center">
+            <ActivityIndicator color="#F37021" />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -55,11 +65,11 @@ export default function AiRoadmapScreen() {
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
-        <RoadmapHeader isDark={isDark} isRegenerating={false} onRegenerate={onRegenerate} />
+        <RoadmapHeader isDark={false} isRegenerating={false} onRegenerate={onRegenerate} />
         <View className="flex-1 px-5 pt-4">
           <ErrorBlock
-            title="Could not load the roadmap"
-            message="Check your connection and try again."
+            title="Không tải được lộ trình"
+            message="Kiểm tra kết nối và thử lại."
             onRetry={() => refetch()}
           />
         </View>
@@ -71,16 +81,16 @@ export default function AiRoadmapScreen() {
     return (
       <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
         <RoadmapHeader
-          isDark={isDark}
+          isDark={false}
           isRegenerating={regenerate.isPending}
           onRegenerate={onRegenerate}
         />
         <View className="flex-1 px-5 pt-4">
-          <EmptyBlock
-            icon="robot-outline"
-            title="No roadmap yet"
-            message="Let the assistant lay out your remaining semesters based on your progress so far."
-            actionLabel={regenerate.isPending ? "Generating…" : "Generate my roadmap"}
+          <EmptyState
+            icon={<Sparkles size={26} color="#F37021" />}
+            title="Chưa có lộ trình"
+            message="Để AI sắp xếp các học kỳ còn lại dựa trên tiến độ học tập hiện tại của bạn."
+            actionLabel={regenerate.isPending ? "Đang tạo…" : "Tạo lộ trình với AI"}
             onAction={onRegenerate}
           />
         </View>
@@ -109,10 +119,10 @@ export default function AiRoadmapScreen() {
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <RoadmapHeader
-        isDark={isDark}
+        isDark={false}
         isRegenerating={regenerate.isPending}
         onRegenerate={onRegenerate}
-        subtitle={`${remaining.length} semesters left · ${roadmap.totalCredits} credits`}
+        subtitle={`${remaining.length} kỳ còn lại · ${roadmap.totalCredits} tín chỉ`}
       />
 
       <ScrollView
@@ -121,57 +131,53 @@ export default function AiRoadmapScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <View className="px-5 pt-4">
-          <View className="flex-row rounded-3xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-            <View className="flex-1 items-center px-2 py-4">
-              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                Remaining
-              </Text>
-              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                {remainingCredits}
-                <Text className="text-[11px] font-medium text-ink-faint dark:text-ink-faint-dark">
-                  {" "}
-                  cr
+          <View className="flex-row gap-3">
+            {/* KPI: graduation */}
+            <AppCard className="flex-1">
+              <View className="flex-row items-center gap-1.5">
+                <GraduationCap size={14} color="#F37021" />
+                <Text className="text-[11px]" style={{ color: "#6B7280" }}>
+                  Dự kiến tốt nghiệp
                 </Text>
+              </View>
+              <Text className="mt-1.5 text-[19px] tabular-nums" style={{ color: "#1A1A1A", fontWeight: "700" }}>
+                {remaining.length} kỳ
               </Text>
-            </View>
-            <View className="w-px bg-line dark:bg-line-dark" />
-            <View className="flex-1 items-center px-2 py-4">
-              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                Semesters
+              <Text className="mt-0.5 text-[10px]" style={{ color: "#6B7280" }}>
+                còn lại · {roadmap.totalSemesters} kỳ tổng
               </Text>
-              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                {roadmap.totalSemesters}
-              </Text>
-            </View>
-            <View className="w-px bg-line dark:bg-line-dark" />
-            <View className="flex-1 items-center px-2 py-4">
-              <Text className="text-[11px] font-medium text-ink-muted dark:text-ink-muted-dark">
-                Completed
-              </Text>
-              <Text className="mt-1 text-xl font-bold text-ink tabular-nums dark:text-ink-dark">
-                {completedCredits}
-                <Text className="text-[11px] font-medium text-ink-faint dark:text-ink-faint-dark">
+            </AppCard>
+            {/* KPI: credits */}
+            <AppCard className="flex-1">
+              <View className="flex-row items-center gap-1.5">
+                <BookOpen size={14} color="#F37021" />
+                <Text className="text-[11px]" style={{ color: "#6B7280" }}>
+                  Tín chỉ
+                </Text>
+              </View>
+              <Text className="mt-1.5 text-[19px] tabular-nums" style={{ color: "#1A1A1A", fontWeight: "700" }}>
+                {remainingCredits}
+                <Text className="text-[12px]" style={{ color: "#6B7280" }}>
+                  {" "}
                   /{roadmap.totalCredits}
                 </Text>
               </Text>
-            </View>
+              <Text className="mt-0.5 text-[10px]" style={{ color: "#6B7280" }}>
+                đã xong {completedCredits} tín chỉ
+              </Text>
+            </AppCard>
           </View>
         </View>
 
         {roadmap.summary ? (
           <View className="px-5 pt-3">
-            <View className="flex-row items-start gap-2.5 rounded-2xl bg-brand-tint px-4 py-3 dark:bg-brand-tint-dark">
-              <MaterialCommunityIcons
-                name="creation-outline"
-                size={16}
-                color={isDark ? "#FFA371" : ORANGE_DEEP}
-                style={{ marginTop: 1 }}
-              />
+            <View className="flex-row items-start gap-2.5 rounded-2xl px-4 py-3" style={{ backgroundColor: "#FFF1E7" }}>
+              <Sparkles size={15} color="#B45309" style={{ marginTop: 1 }} />
               <View className="flex-1">
-                <Text className="text-[12px] font-bold text-ink dark:text-ink-dark">
-                  {"The AI's strategy"}
+                <Text className="text-[12px]" style={{ color: "#1A1A1A", fontWeight: "700" }}>
+                  Chiến lược của AI
                 </Text>
-                <Text className="mt-0.5 text-[12px] leading-[17px] text-ink-muted dark:text-ink-muted-dark">
+                <Text className="mt-0.5 text-[12px] leading-[17px]" style={{ color: "#6B7280" }}>
                   {roadmap.summary}
                 </Text>
               </View>
@@ -181,30 +187,30 @@ export default function AiRoadmapScreen() {
 
         <View className="px-5 pt-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-[12px] font-semibold text-ink-muted dark:text-ink-muted-dark">
-              Programme progress
+            <Text className="text-[12px]" style={{ color: "#6B7280", fontWeight: "600" }}>
+              Tiến độ chương trình
             </Text>
-            <Text className="text-[12px] font-bold text-ink tabular-nums dark:text-ink-dark">
+            <Text className="text-[12px] tabular-nums" style={{ color: "#1A1A1A", fontWeight: "700" }}>
               {progress}%
             </Text>
           </View>
           <View
             className="mt-2 h-2 w-full overflow-hidden rounded-full"
-            style={{ backgroundColor: isDark ? "#302A24" : "#E5E7EB" }}
+            style={{ backgroundColor: "#E5E7EB" }}
           >
             <View
               className="h-full rounded-full"
-              style={{ width: `${progress}%`, backgroundColor: ORANGE }}
+              style={{ width: `${progress}%`, backgroundColor: "#F37021" }}
             />
           </View>
         </View>
 
         <View className="px-5 pt-6">
-          <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-            Semester-by-semester plan
+          <Text className="text-[15px]" style={{ color: "#1A1A1A", fontWeight: "700" }}>
+            Kế hoạch từng học kỳ
           </Text>
-          <Text className="mt-0.5 text-[12px] text-ink-muted dark:text-ink-muted-dark">
-            {roadmap.semesters.length} semesters · tap one to see its courses
+          <Text className="mt-0.5 text-[12px]" style={{ color: "#6B7280" }}>
+            {roadmap.semesters.length} học kỳ · chạm để xem môn học
           </Text>
 
           <View className="mt-4">
@@ -213,7 +219,7 @@ export default function AiRoadmapScreen() {
                 key={semester.semesterNumber}
                 semester={semester}
                 isLast={index === roadmap.semesters.length - 1}
-                isDark={isDark}
+                isDark={false}
                 open={
                   focusSemester === semester.semesterNumber ||
                   (focusSemester === null && semester.semesterNumber === currentSemester)
@@ -231,13 +237,13 @@ export default function AiRoadmapScreen() {
 
         {regenerate.isPending ? (
           <View className="absolute inset-0 items-center justify-center bg-ground/70 dark:bg-ground-dark/70">
-            <View className="items-center rounded-3xl border border-line bg-surface px-7 py-6 dark:border-line-dark dark:bg-surface-dark">
-              <ActivityIndicator color={ORANGE} />
-              <Text className="mt-3 text-[13px] font-bold text-ink dark:text-ink-dark">
-                The AI is recalculating…
+            <View className="items-center rounded-2xl border border-[#E5E7EB] bg-white px-7 py-6">
+              <ActivityIndicator color="#F37021" />
+              <Text className="mt-3 text-[13px]" style={{ color: "#1A1A1A", fontWeight: "700" }}>
+                AI đang tính lại…
               </Text>
-              <Text className="mt-1 text-center text-[11px] text-ink-muted dark:text-ink-muted-dark">
-                Optimising the course order under the new constraint
+              <Text className="mt-1 text-center text-[11px]" style={{ color: "#6B7280" }}>
+                Tối ưu thứ tự môn học theo ràng buộc mới
               </Text>
             </View>
           </View>

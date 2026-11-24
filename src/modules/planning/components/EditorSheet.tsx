@@ -1,10 +1,10 @@
 /**
  * EditorSheet — pick the courses of one term and save the draft.
  *
- * DESIGN (bắt buá»™c):
+ * DESIGN (bắt buộc):
  * - Bottom sheet trượt lên (dùng `Sheet` của `src/components/ui`).
- * - Header "Chá»‰nh sửa kế hoạch" + nút Close.
- * - Bottom action bar: "Lưu nháp" (outline) + "Gửi duyá»‡t" (cam fill).
+ * - Header "Chỉnh sửa kế hoạch" + nút Close.
+ * - Bottom action bar: "Lưu nháp" (outline) + "Gửi duyệt" (cam fill).
  * - Nền #FAFAFA, text #1A1A1A / #6B7280, accent cam FPT #F37021.
  * - Card bo góc 16px, shadow 0 1px 3px rgba(0,0,0,0.05), button bo 12px.
  * - Icon lucide-react-native. Không gradient, không neon.
@@ -116,7 +116,7 @@ export function EditorSheet({
     );
   };
 
-  // Issues chá»‰ có ý nghĩa khi Ä‘ang xem má»™t plan Ä‘ã tá»“n tại.
+  // Issues chỉ có ý nghĩa khi đang xem một plan đã tồn tại.
   const activeIssues = plan ? (issues ?? []) : [];
   const hasIssues = activeIssues.length > 0;
 
@@ -126,10 +126,10 @@ export function EditorSheet({
       <View className="flex-row items-start justify-between gap-3 pb-1">
         <View className="flex-1">
           <Text className="text-[17px]" style={{ color: INK, fontWeight: "700" }}>
-            Chá»‰nh sửa kế hoạch
+            Chỉnh sửa kế hoạch
           </Text>
           <Text className="mt-1 text-[13px]" style={{ color: MUTED }}>
-            {semester.name} · {selectedCourses.length} môn · {totalCredits} tín chá»‰
+            {semester.name} · {selectedCourses.length} môn · {totalCredits} tín chỉ
           </Text>
         </View>
         <Pressable
@@ -158,7 +158,7 @@ export function EditorSheet({
           >
             <ActivityIndicator size="small" color={MUTED} />
             <Text className="text-[12px]" style={{ color: MUTED }}>
-              Đang kiá»ƒm tra kế hoạch…
+              Đang kiểm tra kế hoạch…
             </Text>
           </View>
         ) : issuesError ? (
@@ -172,7 +172,7 @@ export function EditorSheet({
             }}
           >
             <Text className="text-[12px]" style={{ color: MUTED }}>
-              Không kiá»ƒm tra Ä‘ược kế hoạch lúc này. Bạn vẫn có thá»ƒ lưu nháp.
+              Không kiểm tra được kế hoạch lúc này. Bạn vẫn có thể lưu nháp.
             </Text>
           </View>
         ) : hasIssues ? (
@@ -188,7 +188,7 @@ export function EditorSheet({
             <View className="flex-row items-center gap-2">
               <AlertTriangle size={16} color="#B45309" />
               <Text className="text-[13px]" style={{ color: "#B45309", fontWeight: "600" }}>
-                Có {activeIssues.length} vấn Ä‘ề cần xử lý
+                Có {activeIssues.length} vấn đề cần xử lý
               </Text>
             </View>
             <View className="mt-2 gap-1">
@@ -220,13 +220,13 @@ export function EditorSheet({
           >
             <CheckCircle2 size={16} color={SUCCESS} />
             <Text className="text-[13px]" style={{ color: "#047857", fontWeight: "600" }}>
-              Kế hoạch hợp lá»‡
+              Kế hoạch hợp lệ
             </Text>
           </View>
         )
       ) : null}
 
-      {/* Môn Ä‘ã chọn */}
+      {/* Môn đã chọn */}
       {selectedCourses.length > 0 ? (
         <View className="mt-4">
           <View className="flex-row items-center justify-between">
@@ -234,7 +234,7 @@ export function EditorSheet({
               Đã chọn
             </Text>
             <Text className="text-[12px] tabular-nums" style={{ color: MUTED }}>
-              {selectedCourses.length} môn · {totalCredits} tín chá»‰
+              {selectedCourses.length} môn · {totalCredits} tín chỉ
             </Text>
           </View>
 
@@ -264,7 +264,7 @@ export function EditorSheet({
                         style={{ backgroundColor: "#FFF1E7" }}
                       >
                         <Text className="text-[10px]" style={{ color: "#B45309", fontWeight: "700" }}>
-                          BẮT BUá»˜C
+                          BẮT BUỘC
                         </Text>
                       </View>
                     ) : null}
@@ -317,14 +317,14 @@ export function EditorSheet({
         ) : null}
       </View>
 
-      {/* Danh sách môn có thá»ƒ chọn */}
+      {/* Danh sách môn có thể chọn */}
       {candidates.length === 0 ? (
         <View className="items-center py-8">
           <Search size={34} color="#CBD5E1" />
           <Text className="mt-3 text-center text-[13px]" style={{ color: MUTED }}>
             {curriculum.length === 0
-              ? "Chương trình Ä‘ào tạo chưa khả dụng."
-              : "Không có môn nào khá»›p tìm kiếm."}
+              ? "Chương trình đào tạo chưa khả dụng."
+              : "Không có môn nào khớp tìm kiếm."}
           </Text>
         </View>
       ) : (
@@ -385,7 +385,7 @@ export function EditorSheet({
         </ScrollView>
       )}
 
-      {/* Bottom action bar — Lưu nháp (outline) + Gửi duyá»‡t (cam fill) */}
+      {/* Bottom action bar — Lưu nháp (outline) + Gửi duyệt (cam fill) */}
       <View
         className="mt-5 flex-row gap-2.5 border-t pt-4"
         style={{ borderTopColor: FIELD_BORDER }}
@@ -417,7 +417,7 @@ export function EditorSheet({
         <Pressable
           disabled
           accessibilityRole="button"
-          accessibilityLabel="Gửi duyá»‡t — cần lưu nháp trưá»›c"
+          accessibilityLabel="Gửi duyệt — cần lưu nháp trước"
           className="flex-1 flex-row items-center justify-center gap-1.5"
           style={{
             height: 48,
@@ -430,14 +430,14 @@ export function EditorSheet({
             className="text-[15px]"
             style={{ color: hasIssues ? MUTED : "#FFFFFF", fontWeight: "600" }}
           >
-            Gửi duyá»‡t
+            Gửi duyệt
           </Text>
         </Pressable>
       </View>
 
       {hasIssues ? (
         <Text className="mt-2 text-center text-[11px] leading-4" style={{ color: MUTED }}>
-          Cần xử lý các vấn Ä‘ề trên trưá»›c khi gửi kế hoạch Ä‘i duyá»‡t.
+          Cần xử lý các vấn đề trên trước khi gửi kế hoạch đi duyệt.
         </Text>
       ) : null}
     </View>

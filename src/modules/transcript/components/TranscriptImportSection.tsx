@@ -94,7 +94,7 @@ async function saveAndShare(blob: Blob, fileName: string): Promise<void> {
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(dest.uri, {
       mimeType: XLSX_MIME,
-      dialogTitle: "Chia sẻ file lá»—i import",
+      dialogTitle: "Chia sẻ file lỗi import",
     });
   }
 }
@@ -144,7 +144,7 @@ function StatusPill({ status }: { status: string }) {
         className="text-[11px] font-bold"
         style={{ color: confirmed ? "#047857" : "#475569" }}
       >
-        {confirmed ? "Đã xác nhận" : "Má»›i xem trưá»›c"}
+        {confirmed ? "Đã xác nhận" : "Mới xem trước"}
       </Text>
     </View>
   );
@@ -176,7 +176,7 @@ function KpiCard({
   );
 }
 
-/* â”€â”€ History (mount INSIDE the ScrollView) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── History (mount INSIDE the ScrollView) ──────────────────────────────── */
 
 export function TranscriptImportHistory() {
   const isDark = useColorScheme() === "dark";
@@ -196,7 +196,7 @@ export function TranscriptImportHistory() {
     } catch (error) {
       setToast({
         kind: "error",
-        message: errorMessageOf(error, "Không tải Ä‘ược file lá»—i. Vui lòng thử lại."),
+        message: errorMessageOf(error, "Không tải được file lỗi. Vui lòng thử lại."),
       });
     } finally {
       setDownloadingId(null);
@@ -207,7 +207,7 @@ export function TranscriptImportHistory() {
     <View className="px-5 pt-6">
       <View className="flex-row items-end justify-between">
         <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-          Lá»‹ch sử Import
+          Lịch sử Import
         </Text>
         {history.data && history.data.length > 0 ? (
           <Text className="text-[11px] text-ink-faint dark:text-ink-faint-dark">
@@ -224,7 +224,7 @@ export function TranscriptImportHistory() {
           >
             <ActivityIndicator color={ORANGE} />
             <Text className="mt-2 text-center text-xs text-ink-muted dark:text-ink-muted-dark">
-              Đang tải lá»‹ch sử import…
+              Đang tải lịch sử import…
             </Text>
           </View>
         ) : history.isError ? (
@@ -233,12 +233,12 @@ export function TranscriptImportHistory() {
             style={cardShadow(isDark)}
           >
             <Text className="text-center text-[13px] font-bold text-ink dark:text-ink-dark">
-              Không tải Ä‘ược lá»‹ch sử import
+              Không tải được lịch sử import
             </Text>
             <Pressable
               onPress={() => history.refetch()}
               accessibilityRole="button"
-              accessibilityLabel="Thử tải lại lá»‹ch sử import"
+              accessibilityLabel="Thử tải lại lịch sử import"
               className="mt-3 self-center rounded-xl border border-line px-4 py-2 dark:border-line-dark active:opacity-70"
             >
               <Text className="text-xs font-bold text-ink-muted dark:text-ink-muted-dark">
@@ -250,7 +250,7 @@ export function TranscriptImportHistory() {
           <EmptyBlock
             icon="file-upload-outline"
             title="Chưa có lần import nào"
-            message="Bấm nút cam góc dưá»›i Ä‘á»ƒ chọn file .xlsx bảng Ä‘iá»ƒm và xem trưá»›c."
+            message="Bấm nút cam góc dưới để chọn file .xlsx bảng điểm và xem trước."
           />
         ) : (
           <View
@@ -275,7 +275,7 @@ export function TranscriptImportHistory() {
                   </Text>
                   <Text className="mt-0.5 text-[11px] text-ink-muted tabular-nums dark:text-ink-muted-dark">
                     {formatDateTime(entry.createdAt)} · {entry.rowCount} dòng ·{" "}
-                    {entry.errorCount} lá»—i
+                    {entry.errorCount} lỗi
                   </Text>
                 </View>
                 <StatusPill status={entry.status} />
@@ -294,7 +294,7 @@ export function TranscriptImportHistory() {
                   onPress={() => void downloadErrors(entry)}
                   disabled={downloadingId === entry.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Tải file lá»—i ${entry.fileName}`}
+                  accessibilityLabel={`Tải file lỗi ${entry.fileName}`}
                   hitSlop={8}
                   className="active:opacity-70"
                 >
@@ -310,8 +310,8 @@ export function TranscriptImportHistory() {
         )}
       </View>
       <Text className="mt-3 text-[11px] leading-4 text-ink-faint dark:text-ink-faint-dark">
-        File Ä‘úng 5 cá»™t: CourseCode · SemesterCode · FinalScore · Status ·
-        AttemptNumber. Chá»‰ nhận .xlsx.
+        File đúng 5 cột: CourseCode · SemesterCode · FinalScore · Status ·
+        AttemptNumber. Chỉ nhận .xlsx.
       </Text>
 
       {/* Past-import detail sheet */}
@@ -330,7 +330,7 @@ export function TranscriptImportHistory() {
               </Text>
               <Text className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark">
                 {detail.data
-                  ? `${detail.data.rowCount} dòng · ${detail.data.errorCount} lá»—i`
+                  ? `${detail.data.rowCount} dòng · ${detail.data.errorCount} lỗi`
                   : "Đang tải…"}
               </Text>
             </View>
@@ -343,7 +343,7 @@ export function TranscriptImportHistory() {
           ) : detail.isError || !detail.data ? (
             <View className="items-center py-8">
               <Text className="text-sm font-bold text-ink dark:text-ink-dark">
-                Không tải Ä‘ược chi tiết
+                Không tải được chi tiết
               </Text>
               <Pressable
                 onPress={() => detail.refetch()}
@@ -396,7 +396,7 @@ export function TranscriptImportHistory() {
   );
 }
 
-/* â”€â”€ FAB + preview (mount OUTSIDE the ScrollView, as an overlay) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── FAB + preview (mount OUTSIDE the ScrollView, as an overlay) ─────────── */
 
 export function TranscriptImportFab() {
   const isDark = useColorScheme() === "dark";
@@ -418,7 +418,7 @@ export function TranscriptImportFab() {
       const asset = res.assets[0];
       const name = asset.name ?? "transcript.xlsx";
       if (!/\.xlsx$/i.test(name)) {
-        setToast({ kind: "error", message: "Chá»‰ nhận file .xlsx. Vui lòng chọn lại." });
+        setToast({ kind: "error", message: "Chỉ nhận file .xlsx. Vui lòng chọn lại." });
         return;
       }
       setFileName(name);
@@ -433,7 +433,7 @@ export function TranscriptImportFab() {
     } catch (error) {
       setToast({
         kind: "error",
-        message: errorMessageOf(error, "Không Ä‘ọc Ä‘ược file. Vui lòng thử lại."),
+        message: errorMessageOf(error, "Không đọc được file. Vui lòng thử lại."),
       });
     }
   };
@@ -465,7 +465,7 @@ export function TranscriptImportFab() {
         onPress={() => void pickFile()}
         disabled={previewMut.isPending}
         accessibilityRole="button"
-        accessibilityLabel="Import bảng Ä‘iá»ƒm từ file xlsx"
+        accessibilityLabel="Import bảng điểm từ file xlsx"
         style={[{ backgroundColor: ORANGE }, floatShadow()]}
         className="absolute bottom-6 right-5 h-14 w-14 items-center justify-center rounded-full active:opacity-85"
       >
@@ -492,7 +492,7 @@ export function TranscriptImportFab() {
               </View>
               <View className="flex-1">
                 <Text className="text-lg font-bold text-ink dark:text-ink-dark">
-                  Xem trưá»›c dữ liá»‡u
+                  Xem trước dữ liệu
                 </Text>
                 <Text
                   className="mt-0.5 text-xs text-ink-muted dark:text-ink-muted-dark"
@@ -506,13 +506,13 @@ export function TranscriptImportFab() {
             <View className="mt-4 flex-row gap-3">
               <KpiCard
                 value={validCount}
-                label="dòng hợp lá»‡"
+                label="dòng hợp lệ"
                 bg={isDark ? "#0B2E1F" : "#DCFCE7"}
                 fg={isDark ? "#6EE7B7" : "#047857"}
               />
               <KpiCard
                 value={preview.errorCount}
-                label="dòng lá»—i"
+                label="dòng lỗi"
                 bg={isDark ? "#3B0F0F" : "#FEE2E2"}
                 fg={isDark ? "#FCA5A5" : "#EF4444"}
               />
@@ -521,7 +521,7 @@ export function TranscriptImportFab() {
             {errorRows.length > 0 ? (
               <View className="mt-4">
                 <Text className="text-[13px] font-bold text-ink dark:text-ink-dark">
-                  Các dòng lá»—i ({errorRows.length})
+                  Các dòng lỗi ({errorRows.length})
                 </Text>
                 <View
                   className="mt-2 overflow-hidden rounded-2xl border dark:border-line-dark"
@@ -556,8 +556,8 @@ export function TranscriptImportFab() {
                   ))}
                 </View>
                 <Text className="mt-2 text-xs leading-4" style={{ color: "#EF4444" }}>
-                  Sửa các dòng Ä‘ỏ trong file rá»“i chọn lại file Ä‘á»ƒ xem trưá»›c. Chá»‰ xác
-                  nhận Ä‘ược khi không còn dòng lá»—i.
+                  Sửa các dòng đỏ trong file rồi chọn lại file để xem trước. Chỉ xác
+                  nhận được khi không còn dòng lỗi.
                 </Text>
               </View>
             ) : (
@@ -574,8 +574,8 @@ export function TranscriptImportFab() {
                   className="flex-1 text-xs font-semibold leading-4"
                   style={{ color: isDark ? "#6EE7B7" : "#047857" }}
                 >
-                  Mọi dòng Ä‘ều hợp lá»‡. Bấm xác nhận Ä‘á»ƒ ghi {preview.rowCount} môn vào
-                  bảng Ä‘iá»ƒm.
+                  Mọi dòng đều hợp lệ. Bấm xác nhận để ghi {preview.rowCount} môn vào
+                  bảng điểm.
                 </Text>
               </View>
             )}

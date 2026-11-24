@@ -1,6 +1,11 @@
 import { Text, View } from "react-native";
+import { CalendarX2, Clock, UserX } from "lucide-react-native";
+
+import { AppCard } from "@/components/ui/AppCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 import type { AvailableSlot } from "@/types";
-import { ErrorBlock, LoadingBlock, EmptyBlock } from "@/components/feedback";
+import { ErrorBlock } from "@/components/feedback";
 import { SlotGroup } from "./SlotGroup";
 
 interface SlotsSectionProps {
@@ -19,6 +24,10 @@ interface SlotsSectionProps {
   onRetrySlots: () => void;
 }
 
+const INK = "#1A1A1A";
+const MUTED = "#6B7280";
+const ORANGE = "#F37021";
+
 /** Free-slot picker: header count + loading / error / empty + morning/afternoon grids. */
 export function SlotsSection({
   advisorLoading,
@@ -30,92 +39,104 @@ export function SlotsSection({
   morning,
   afternoon,
   selectedStart,
-  isDark,
   onPick,
   onRetryAdvisor,
   onRetrySlots,
 }: SlotsSectionProps) {
-  const headerCount = advisorLoading || slotsLoading
-    ? "Loading…"
-    : advisorError
-      ? "Unavailable"
-      : hasNoAdvisor
-        ? "Unavailable"
-        : `${slots.length} slots open`;
+  const headerCount =
+    advisorLoading || slotsLoading
+      ? "Đang tải…"
+      : advisorError || hasNoAdvisor
+        ? "Không khả dụng"
+        : `${slots.length} slot trống`;
 
   return (
     <View className="px-5 pt-5">
       <View className="flex-row items-end justify-between">
-        <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-          Free slots
+        <Text className="text-[15px]" style={{ color: INK, fontWeight: "700" }}>
+          Khung giờ trống
         </Text>
-        <Text className="text-xs font-semibold" style={{ color: "#B45309" }}>
+        <Text className="text-[12px]" style={{ color: ORANGE, fontWeight: "700" }}>
           {headerCount}
         </Text>
       </View>
-      <Text className="mt-1 text-xs text-ink-muted dark:text-ink-muted-dark">
-        Every session lasts 30 minutes · tap a time to pick it
+      <Text className="mt-1 text-[12px]" style={{ color: MUTED }}>
+        Mỗi buổi kéo dài 30 phút · chạm vào giờ để chọn
       </Text>
 
-      {advisorLoading ? (
+      {advisorLoading || slotsLoading ? (
         <View className="mt-3">
-          <LoadingBlock message="Checking your advisor's availability…" />
+          <SkeletonBlock height={64} radius={12} />
+          <View className="mt-2 flex-row gap-2.5">
+            <SkeletonBlock height={60} radius={12} className="flex-1" />
+            <SkeletonBlock height={60} radius={12} className="flex-1" />
+            <SkeletonBlock height={60} radius={12} className="flex-1" />
+          </View>
+          <View className="mt-2 flex-row gap-2.5">
+            <SkeletonBlock height={60} radius={12} className="flex-1" />
+            <SkeletonBlock height={60} radius={12} className="flex-1" />
+            <SkeletonBlock height={60} radius={12} className="flex-1" />
+          </View>
         </View>
       ) : advisorError ? (
         <View className="mt-3">
           <ErrorBlock
-            title="Availability unavailable"
-            message="Could not load the availability for this day."
+            title="Không tải được lịch rảnh"
+            message="Kiểm tra kết nối và thử lại."
             onRetry={onRetryAdvisor}
           />
-        </View>
-      ) : slotsLoading ? (
-        <View className="mt-3">
-          <LoadingBlock message="Checking your advisor's availability…" />
         </View>
       ) : slotsError ? (
         <View className="mt-3">
           <ErrorBlock
-            title="Availability unavailable"
-            message="Could not load the availability for this day."
+            title="Không tải được lịch rảnh"
+            message="Không thể xem giờ rảnh của ngày này."
             onRetry={onRetrySlots}
           />
         </View>
       ) : hasNoAdvisor ? (
-        <View className="mt-3">
-          <EmptyBlock
-            icon="account-alert-outline"
-            title="No advisor assigned yet"
-            message="You don't have an assigned advisor yet. Please contact the admin."
+        <AppCard className="mt-3" padded={false}>
+          <EmptyState
+            muted
+            icon={<UserX size={24} color={MUTED} />}
+            title="Chưa có cố vấn"
+            message="Bạn chưa được phân công cố vấn. Vui lòng liên hệ quản trị viên."
           />
-        </View>
+        </AppCard>
       ) : slots.length === 0 ? (
-        <View className="mt-3">
-          <EmptyBlock
-            icon="bed-outline"
-            title="No free slots on this day"
-            message="Pick another weekday to see the open slots."
+        <AppCard className="mt-3" padded={false}>
+          <EmptyState
+            muted
+            icon={<CalendarX2 size={24} color={MUTED} />}
+            title="Hôm nay không còn giờ trống"
+            message="Chọn một ngày trong tuần khác để xem các khung giờ trống."
           />
-        </View>
+        </AppCard>
       ) : (
-        <>
+        <AppCard className="mt-3">
+          <View className="flex-row items-center gap-1.5">
+            <Clock size={13} color={MUTED} />
+            <Text className="text-[11px]" style={{ color: MUTED, fontWeight: "600" }}>
+              Chọn một khung giờ bên dưới
+            </Text>
+          </View>
           <SlotGroup
-            title="Morning"
-            icon="weather-sunny"
+            title="Buổi sáng"
+            icon="sun"
             slots={morning}
             selectedStart={selectedStart}
             onPick={onPick}
-            isDark={isDark}
+            isDark={false}
           />
           <SlotGroup
-            title="Afternoon"
-            icon="weather-partly-cloudy"
+            title="Buổi chiều"
+            icon="cloud"
             slots={afternoon}
             selectedStart={selectedStart}
             onPick={onPick}
-            isDark={isDark}
+            isDark={false}
           />
-        </>
+        </AppCard>
       )}
     </View>
   );

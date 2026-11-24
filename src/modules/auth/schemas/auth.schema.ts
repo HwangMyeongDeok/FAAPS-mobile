@@ -74,3 +74,38 @@ export type SignInInput = z.infer<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+/**
+ * Forgot-password form — a single email field.
+ *
+ * The backend accepts any syntactically valid address and answers with the
+ * same generic message, so the form only validates the shape.
+ */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+});
+
+/**
+ * Reset-password form — a new password plus its confirmation.
+ *
+ * The backend rule is 8–72 characters with at least one letter and one
+ * number (`AuthPasswordService.PASSWORD`); the same rule is mirrored here
+ * so the student learns about it before the round-trip.
+ */
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+      .max(72, "Mật khẩu không được quá 72 ký tự")
+      .regex(/[A-Za-z]/, "Mật khẩu phải có ít nhất một chữ cái")
+      .regex(/\d/, "Mật khẩu phải có ít nhất một chữ số"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

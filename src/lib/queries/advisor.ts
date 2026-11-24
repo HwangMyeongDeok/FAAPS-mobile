@@ -8,6 +8,8 @@ import {
   createAdvisingRequest,
   getAdvisingRequestDetail,
   getAdvisingRequests,
+  getAdvisorAssignment,
+  requestAdvisorAssignment,
   sendAdvisingMessage,
 } from "@/lib/api/advisor";
 
@@ -15,6 +17,7 @@ export const advisorKeys = {
   all: ["advisor"] as const,
   requests: () => ["advisor", "requests"] as const,
   detail: (requestId: string) => ["advisor", "requests", requestId] as const,
+  assignment: () => ["advisor", "assignment"] as const,
 };
 
 export function useAdvisingRequests() {
@@ -67,6 +70,32 @@ export function useCreateAdvisingRequest() {
       createAdvisingRequest(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: advisorKeys.requests() });
+    },
+  });
+}
+
+/**
+ * The student's advisor assignment state — has an advisor, or is a request
+ * still waiting for the admins.
+ */
+export function useAdvisorAssignment() {
+  return useQuery({
+    queryKey: advisorKeys.assignment(),
+    queryFn: getAdvisorAssignment,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Ask the admins to assign an advisor. The backend call is idempotent, so a
+ * double tap only produces one request.
+ */
+export function useRequestAdvisorAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: requestAdvisorAssignment,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: advisorKeys.assignment() });
     },
   });
 }

@@ -7,7 +7,12 @@
  */
 import { clearCsrfToken, http } from "@/lib/http";
 import { clearSession } from "@/lib/api/token";
-import type { AuthCredentials, AuthSession } from "@/types";
+import type {
+  AuthCredentials,
+  AuthSession,
+  ForgotPasswordResult,
+  ResetPasswordResult,
+} from "@/types";
 
 /**
  * Sign in with an FPT email address and a password.
@@ -64,4 +69,33 @@ export async function restoreSession(): Promise<AuthSession | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * `POST /api/auth/forgot-password` — ask the backend to email a reset link.
+ *
+ * Public endpoint (no session needed). The backend always answers with the
+ * same generic message, so a successful call never reveals whether the
+ * email exists — the UI must show that message verbatim.
+ */
+export async function forgotPassword(email: string): Promise<ForgotPasswordResult> {
+  return http.post<ForgotPasswordResult>("/api/auth/forgot-password", {
+    email: email.trim(),
+  });
+}
+
+/**
+ * `POST /api/auth/reset-password` — set a new password with a reset token.
+ *
+ * Public endpoint (no session needed). The token comes from the link the
+ * backend emailed; it is single-use and expires after 30 minutes.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<ResetPasswordResult> {
+  return http.post<ResetPasswordResult>("/api/auth/reset-password", {
+    token: token.trim(),
+    newPassword,
+  });
 }

@@ -1,0 +1,28 @@
+{
+  "total_tokens_used": 0,
+  "total_tokens_baseline": 0,
+  "total_tokens_saved": 0,
+  "total_sessions": 1,
+  "total_files_avoided": 0,
+  "avg_crush_ratio": 0,
+  "cost_saved_usd": 0,
+  "cost_baseline_usd": 0,
+  "cost_actual_usd": 0,
+  "by_ide": {
+    "antigravity": {
+      "sessions": 1,
+      "tokens_used": 0,
+      "tokens_baseline": 0,
+      "tokens_saved": 0
+    }
+  },
+  "by_task": {
+    "review": 0,
+    "refactor": 0,
+    "onboarding": 0,
+    "general": 0
+  },
+  "last_build": null,
+  "graph_nodes": 0,
+  "graph_edges": 0
+}

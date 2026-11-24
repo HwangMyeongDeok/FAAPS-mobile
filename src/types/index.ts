@@ -37,6 +37,27 @@ export interface AuthCredentials {
 }
 
 // ------------------------------------------------------------
+// Password reset
+// ------------------------------------------------------------
+
+/**
+ * `AuthController.forgotPassword` → `{ success, message }`.
+ *
+ * The backend always answers with the same generic message so that the
+ * endpoint cannot be used to probe which emails exist.
+ */
+export interface ForgotPasswordResult {
+  success: boolean;
+  message: string;
+}
+
+/** `AuthController.resetPassword` → `{ success, message }`. */
+export interface ResetPasswordResult {
+  success: boolean;
+  message: string;
+}
+
+// ------------------------------------------------------------
 // Student profile
 // ------------------------------------------------------------
 
@@ -186,6 +207,36 @@ export interface CurriculumPlan {
   header: PlanHeader;
   courses: PlanCourse[];
   issues: string[];
+}
+
+// ------------------------------------------------------------
+// Advisor assignment
+// ------------------------------------------------------------
+
+/**
+ * `AssignmentRequestService.assignmentStatus` →
+ * `GET /api/student/advisor-assignment`
+ *
+ * `advisorId` is null while the student has no advisor; `pendingRequestId`
+ * is non-null while a request sent to the admins is still unresolved.
+ */
+export interface AdvisorAssignmentStatus {
+  advisorId: string | null;
+  pendingRequestId: string | null;
+  canRequestAdvisor: boolean;
+  canRequestAdvising: boolean;
+}
+
+/**
+ * `AssignmentRequestService.requestAdvisor` →
+ * `POST /api/student/advisor-assignment-requests`
+ *
+ * `created` is false when the request was already pending (idempotent).
+ */
+export interface AdvisorAssignmentRequestResult {
+  id: string;
+  status: string;
+  created: boolean;
 }
 
 // ------------------------------------------------------------

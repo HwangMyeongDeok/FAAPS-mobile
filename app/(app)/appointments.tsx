@@ -185,24 +185,24 @@ export default function AppointmentsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-ground dark:bg-ground-dark" edges={["top"]}>
       <ScreenHeader
-        title="Book a session"
+        title="Đặt buổi gặp"
         subtitle={
           advisor
-            ? `With ${advisor.fullName}${advisor.groupName ? ` · ${advisor.groupName}` : ""}`
-            : "Meet your advisor in person"
+            ? `Với ${advisor.fullName}${advisor.groupName ? ` · ${advisor.groupName}` : ""}`
+            : "Gặp cố vấn học tập trực tiếp"
         }
         onBack={goBack}
         right={
           upcoming.length > 0 ? (
             <View
               className="rounded-full px-3 py-1.5"
-              style={{ backgroundColor: isDark ? "#2E1C0E" : "#FFF1E7" }}
+              style={{ backgroundColor: "#FFF1E7" }}
             >
               <Text
-                className="text-xs font-bold"
-                style={{ color: isDark ? "#FFA371" : ORANGE_DEEP }}
+                className="text-xs"
+                style={{ color: ORANGE_DEEP, fontWeight: "700" }}
               >
-                {upcoming.length} upcoming
+                {upcoming.length} sắp tới
               </Text>
             </View>
           ) : undefined

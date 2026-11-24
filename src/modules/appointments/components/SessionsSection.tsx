@@ -1,10 +1,12 @@
 import { Pressable, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { AlertCircle, CalendarPlus, Check, X } from "lucide-react-native";
 
-import { LoadingBlock, EmptyBlock } from "@/components/feedback";
-import { cardShadow } from "@/lib/shadow";
+import { AppCard } from "@/components/ui/AppCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
+import { StatusBadge } from "@/components/ui/status";
 import type { BookedAppointment } from "@/types";
-import { ORANGE, dateOf, shortDate, timeOf } from "../format";
+import { shortDate, dateOf, timeOf } from "../format";
 import { AppointmentCard } from "./AppointmentCard";
 
 interface SessionsSectionProps {
@@ -16,6 +18,9 @@ interface SessionsSectionProps {
   isDark: boolean;
   onCancel: (a: BookedAppointment) => void;
 }
+
+const INK = "#1A1A1A";
+const MUTED = "#6B7280";
 
 /** Upcoming sessions + past/cancelled history. */
 export function SessionsSection({
@@ -30,40 +35,29 @@ export function SessionsSection({
   return (
     <View className="px-5 pt-6">
       <View className="flex-row items-end justify-between">
-        <Text className="text-[15px] font-bold text-ink dark:text-ink-dark">
-          Upcoming sessions
+        <Text className="text-[15px]" style={{ color: INK, fontWeight: "700" }}>
+          Buổi gặp sắp tới
         </Text>
         {upcoming.length > 0 ? (
-          <Text className="text-xs text-ink-faint dark:text-ink-faint-dark">
-            {upcoming.length} booked
+          <Text className="text-[12px]" style={{ color: MUTED }}>
+            {upcoming.length} đã đặt
           </Text>
         ) : null}
       </View>
 
       {apptsLoading ? (
         <View className="mt-3">
-          <LoadingBlock />
+          <SkeletonBlock height={140} radius={16} />
         </View>
       ) : upcoming.length === 0 ? (
-        <View className="mt-3">
-          <View
-            className="items-center rounded-3xl border border-line bg-surface px-6 py-8 dark:border-line-dark dark:bg-surface-dark"
-            style={cardShadow(isDark)}
-          >
-            <View
-              className="h-12 w-12 items-center justify-center rounded-full"
-              style={{ backgroundColor: ORANGE }}
-            >
-              <MaterialCommunityIcons name="calendar-plus" size={22} color="#fff" />
-            </View>
-            <Text className="mt-3 text-sm font-bold text-ink dark:text-ink-dark">
-              No sessions booked
-            </Text>
-            <Text className="mt-1 text-center text-xs leading-4 text-ink-muted dark:text-ink-muted-dark">
-              Pick a date and a time slot above to book your first session with your advisor.
-            </Text>
-          </View>
-        </View>
+        <AppCard className="mt-3" padded={false}>
+          <EmptyState
+            muted
+            icon={<CalendarPlus size={24} color={MUTED} />}
+            title="Chưa có buổi gặp nào"
+            message="Chọn ngày và khung giờ ở trên để đặt buổi gặp đầu tiên với cố vấn."
+          />
+        </AppCard>
       ) : (
         <View className="mt-3 gap-3">
           {upcoming.map((a) => (
@@ -81,33 +75,35 @@ export function SessionsSection({
 
       {history.length > 0 ? (
         <View className="mt-5">
-          <Text className="text-[13px] font-bold text-ink-muted dark:text-ink-muted-dark">
-            Past / cancelled ({history.length})
+          <Text className="text-[13px]" style={{ color: MUTED, fontWeight: "700" }}>
+            Đã qua / đã huỷ ({history.length})
           </Text>
-          <View className="mt-2 gap-2 opacity-80">
+          <View className="mt-2 gap-2">
             {history.map((a) => {
               const v = shortDate(dateOf(a.startTime));
               return (
-                <View
-                  key={a.id}
-                  className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 dark:border-line-dark dark:bg-surface-dark"
-                >
-                  <Text className="text-xs font-bold text-ink-faint dark:text-ink-faint-dark tabular-nums">
-                    {v.day}/{v.mon}
-                  </Text>
-                  <Text
-                    className="flex-1 text-xs text-ink-muted dark:text-ink-muted-dark"
-                    numberOfLines={1}
+                <AppCard key={a.id} padded={false} className="flex-row items-center gap-3 px-4 py-3">
+                  <View
+                    className="items-center justify-center rounded-lg px-2 py-1"
+                    style={{ backgroundColor: "#F3F4F6", minWidth: 44 }}
                   >
-                    {timeOf(a.startTime)} · {a.reason}
-                  </Text>
-                  <Text
-                    className="text-[11px] font-bold"
-                    style={{ color: a.status === "CANCELLED" ? "#EF4444" : "#6B7280" }}
-                  >
-                    {a.status === "CANCELLED" ? "Cancelled" : "Completed"}
-                  </Text>
-                </View>
+                    <Text className="text-[13px] tabular-nums" style={{ color: INK, fontWeight: "700" }}>
+                      {v.day}
+                    </Text>
+                    <Text className="text-[9px]" style={{ color: MUTED, fontWeight: "600" }}>
+                      {v.mon}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[12px] tabular-nums" style={{ color: INK, fontWeight: "600" }}>
+                      {timeOf(a.startTime)} – {timeOf(a.endTime)}
+                    </Text>
+                    <Text className="text-[11px]" style={{ color: MUTED }} numberOfLines={1}>
+                      {a.reason}
+                    </Text>
+                  </View>
+                  <StatusBadge status={a.status} />
+                </AppCard>
               );
             })}
           </View>
@@ -118,28 +114,29 @@ export function SessionsSection({
 }
 
 /** Green success banner shown right after a booking. */
-export function BookingSuccessBanner({
-  onDismiss,
-}: {
-  onDismiss: () => void;
-}) {
+export function BookingSuccessBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <View className="px-5 pt-4">
-      <View className="flex-row items-center gap-3 rounded-3xl p-4" style={{ backgroundColor: "#10B981" }}>
+      <View
+        className="flex-row items-center gap-3 rounded-2xl px-4 py-3.5"
+        style={{ backgroundColor: "#ECFDF5", borderWidth: 1, borderColor: "#A7F3D0" }}
+      >
         <View
-          className="h-10 w-10 items-center justify-center rounded-full"
-          style={{ backgroundColor: "rgba(255,255,255,0.22)" }}
+          className="h-9 w-9 items-center justify-center rounded-full"
+          style={{ backgroundColor: "#10B981" }}
         >
-          <MaterialCommunityIcons name="check" size={20} color="#fff" />
+          <Check size={18} color="#FFFFFF" />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-bold text-white">Session booked</Text>
-          <Text className="mt-0.5 text-xs leading-4" style={{ color: "rgba(255,255,255,0.85)" }}>
-            Your advisor will confirm by notification. The details are in the list below.
+          <Text className="text-[13px]" style={{ color: "#047857", fontWeight: "700" }}>
+            Đã đặt buổi gặp
+          </Text>
+          <Text className="mt-0.5 text-[11px] leading-4" style={{ color: "#047857" }}>
+            Cố vấn sẽ xác nhận qua thông báo. Chi tiết nằm trong danh sách bên dưới.
           </Text>
         </View>
-        <Pressable onPress={onDismiss} hitSlop={10}>
-          <MaterialCommunityIcons name="close" size={18} color="rgba(255,255,255,0.8)" />
+        <Pressable onPress={onDismiss} hitSlop={10} accessibilityLabel="Đóng thông báo">
+          <X size={16} color="#047857" />
         </Pressable>
       </View>
     </View>
@@ -151,9 +148,9 @@ export function AppointmentToast({ message }: { message: string }) {
   return (
     <View pointerEvents="none" className="absolute inset-x-0 bottom-6 items-center px-6">
       <View
-        className="w-full max-w-md flex-row items-center gap-2.5 rounded-2xl px-4 py-3"
+        className="w-full max-w-md flex-row items-center gap-2.5 rounded-xl px-4 py-3"
         style={{
-          backgroundColor: "#241C17",
+          backgroundColor: "#1A1A1A",
           shadowColor: "#000",
           shadowOpacity: 0.25,
           shadowRadius: 12,
@@ -161,8 +158,10 @@ export function AppointmentToast({ message }: { message: string }) {
           elevation: 6,
         }}
       >
-        <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#FFA371" />
-        <Text className="flex-1 text-xs leading-4 text-white">{message}</Text>
+        <AlertCircle size={18} color="#FCA5A5" />
+        <Text className="flex-1 text-[12px] leading-4" style={{ color: "#FFFFFF" }}>
+          {message}
+        </Text>
       </View>
     </View>
   );
@@ -171,14 +170,13 @@ export function AppointmentToast({ message }: { message: string }) {
 /** Dashed empty card for the no-sessions state (kept for reuse in tests). */
 export function NoSessionsEmpty() {
   return (
-    <View className="mt-3">
-      <EmptyBlock
-        icon="calendar-plus"
-        title="No sessions booked"
-        message="Pick a date and a time slot above to book your first session with your advisor."
+    <AppCard className="mt-3" padded={false}>
+      <EmptyState
+        muted
+        icon={<CalendarPlus size={24} color={MUTED} />}
+        title="Chưa có buổi gặp nào"
+        message="Chọn ngày và khung giờ ở trên để đặt buổi gặp đầu tiên với cố vấn."
       />
-    </View>
+    </AppCard>
   );
 }
-
-// Re-export to keep test/route checks quiet about unused imports.
