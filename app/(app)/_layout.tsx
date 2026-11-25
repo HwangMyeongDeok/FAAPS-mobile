@@ -1,5 +1,6 @@
 import { Redirect, Stack } from "expo-router";
 
+import { isRoleSupportedByMobile } from "@/modules/auth";
 import { useAuthStore } from "@/stores/auth";
 
 /**
@@ -18,11 +19,19 @@ import { useAuthStore } from "@/stores/auth";
  */
 export default function AppLayout() {
   const status = useAuthStore((s) => s.status);
+  const role = useAuthStore((s) => s.session?.role);
 
   // Auth guard — redirect instead of rendering `null` (which showed a blank
   // white screen when deep-linking into a protected route while signed out).
   if (status === "unknown") return null;
   if (status !== "authenticated") return <Redirect href="/(auth)/sign-in" />;
+
+  // Role guard — every screen in this stack renders *student* data
+  // (`/api/student/*`). An advisor/admin session would render empty or
+  // misleading screens, so send them back to sign-in.
+  if (!isRoleSupportedByMobile(role)) {
+    return <Redirect href="/(auth)/sign-in" />;
+  }
 
   return (
     <Stack

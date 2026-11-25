@@ -46,10 +46,11 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
-const initialsOf = (name: string) =>
-  name
+const initialsOf = (name: string | null | undefined) =>
+  (name ?? "")
     .trim()
     .split(/\s+/)
+    .filter(Boolean)
     .slice(-2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
@@ -157,7 +158,7 @@ export default function ProfileScreen() {
             <MenuRow
               icon={Users}
               title="Cố vấn"
-              subtitle={advisor ? advisor.fullName : "Chưa được phân công"}
+              subtitle={advisor ? (advisor.fullName ?? "Chưa được phân công") : "Chưa được phân công"}
               onPress={() => router.push("/(app)/advising")}
             />
             <MenuRow
@@ -275,7 +276,7 @@ export default function ProfileScreen() {
                   <Pressable
                     onPress={() => router.push("/(app)/advising")}
                     accessibilityRole="button"
-                    accessibilityLabel={`Nhắn tin cho ${advisor.fullName}`}
+                    accessibilityLabel={`Nhắn tin cho ${advisor.fullName ?? "cố vấn"}`}
                     className="flex-row items-center gap-3 active:opacity-70"
                   >
                     <View
@@ -283,15 +284,15 @@ export default function ProfileScreen() {
                       style={{ backgroundColor: "#FFF1E7" }}
                     >
                       <Text className="text-base" style={{ color: "#B45309", fontWeight: "700" }}>
-                        {advisor.fullName.charAt(0)}
+                        {advisor.fullName?.charAt(0) ?? "C"}
                       </Text>
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm" style={{ color: INK, fontWeight: "600" }}>
-                        {advisor.fullName}
+                        {advisor.fullName ?? "Cố vấn học tập"}
                       </Text>
                       <Text className="text-xs" style={{ color: MUTED }}>
-                        {advisor.email}
+                        {advisor.email ?? advisor.specialization ?? advisor.groupName ?? "—"}
                       </Text>
                     </View>
                     <ChevronRight size={18} color="#9CA3AF" />

@@ -88,10 +88,10 @@ export function AdvisorSection({ advisor, advisorError, isDark, onRetry }: { adv
             </View>
             <View className="flex-1">
               <Text className="text-[15px] text-ink" style={{ fontWeight: "700" }}>
-                {advisor.fullName}
+                {advisor.fullName ?? "Cố vấn học tập"}
               </Text>
               <Text className="mt-0.5 text-[11px] text-ink-muted" numberOfLines={1}>
-                {advisor.email}
+                {advisor.email ?? advisor.specialization ?? advisor.groupName ?? "Chưa có email"}
               </Text>
               <View className="mt-1.5 self-start rounded-full bg-[#F3F4F6] px-2.5 py-1">
                 <Text className="text-[10px] text-ink-muted" style={{ fontWeight: "600" }}>
@@ -102,7 +102,7 @@ export function AdvisorSection({ advisor, advisorError, isDark, onRetry }: { adv
             <Pressable
               onPress={() => router.push("/(app)/advising")}
               accessibilityRole="button"
-              accessibilityLabel={`Nhắn tin cho ${advisor.fullName}`}
+              accessibilityLabel={`Nhắn tin cho ${advisor.fullName ?? "cố vấn"}`}
               className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
               style={{ backgroundColor: ORANGE }}
             >
@@ -121,12 +121,15 @@ export function AdvisorSection({ advisor, advisorError, isDark, onRetry }: { adv
 
 /** Latest reminders. */
 export function RemindersSection({ notifications, unreadCount }: { notifications?: NotificationPage; unreadCount: number }) {
-  if (!notifications || notifications.items.length === 0) return null;
+  // The backend may answer with a null `items` array — normalise once and
+  // use the safe list everywhere below.
+  const items = notifications?.items ?? [];
+  if (items.length === 0) return null;
   return (
     <View className="px-5 pt-5">
       <SectionTitle title="Nhắc nhở" action={`${unreadCount} mới`} onPress={() => router.push("/(app)/(tabs)/notifications")} />
       <View className="mt-3 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
-        {notifications.items.slice(0, 3).map((n: AppNotification, i: number) => (
+        {items.slice(0, 3).map((n: AppNotification, i: number) => (
           <View key={n.id}>
             <View className="flex-row items-start gap-3 p-4">
               <View className="mt-1.5 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NOTIFICATION_DOT[n.notificationType] ?? "#9CA3AF" }} />
@@ -151,7 +154,7 @@ export function RemindersSection({ notifications, unreadCount }: { notifications
                 </Text>
               </View>
             </View>
-            {i < Math.min(2, notifications.items.length - 1) ? <View className="ml-[30px] h-px bg-rule" /> : null}
+            {i < Math.min(2, items.length - 1) ? <View className="ml-[30px] h-px bg-rule" /> : null}
           </View>
         ))}
       </View>
