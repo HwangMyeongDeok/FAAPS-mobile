@@ -1,10 +1,22 @@
 import { LogIn, Sparkles } from "lucide-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Badge, Button } from "@/components/ui";
+import {
+  UNSUPPORTED_ROLE_ALERT_TITLE,
+  UNSUPPORTED_ROLE_MESSAGE,
+  isRoleSupportedByMobile,
+} from "@/modules/auth";
 import { useAuthStore } from "@/stores/auth";
 
 const FPT_ORANGE = "#F37021";
@@ -12,6 +24,7 @@ const MUTED = "#6B7280";
 
 export default function SignIn() {
   const signIn = useAuthStore((s) => s.signIn);
+  const signOut = useAuthStore((s) => s.signOut);
   const status = useAuthStore((s) => s.status);
   const loading = status === "authenticating";
 
@@ -32,6 +45,17 @@ export default function SignIn() {
     setError(null);
     try {
       await signIn({ email: mail, password });
+
+      // The mobile app only ships the student experience. If an advisor or
+      // an admin signed in, the session is valid but every screen under
+      // `app/(app)/` would be wrong (or empty). Refuse the session and
+      // point them at the web client instead of showing a broken app.
+      const role = useAuthStore.getState().session?.role;
+      if (!isRoleSupportedByMobile(role)) {
+        await signOut();
+        Alert.alert(UNSUPPORTED_ROLE_ALERT_TITLE, UNSUPPORTED_ROLE_MESSAGE);
+        return;
+      }
     } catch (err) {
       setError(
         err instanceof Error

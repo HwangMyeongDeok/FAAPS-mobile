@@ -13,13 +13,13 @@ export function getGreeting(): string {
   return "Good night";
 }
 
-export function firstName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  return parts[parts.length - 1] ?? full;
+export function firstName(full: string | null | undefined): string {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  return parts[parts.length - 1] ?? (full ?? "");
 }
 
-export function initials(name: string): string {
-  return name
+export function initials(name: string | null | undefined): string {
+  return (name ?? "")
     .split(" ")
     .filter(Boolean)
     .slice(-2)
@@ -63,8 +63,10 @@ export const NOTIFICATION_LABEL: Record<string, string> = {
   INFO: "System",
 };
 
-export function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+export function timeAgo(iso: string | null | undefined): string {
+  const ts = iso ? new Date(iso).getTime() : NaN;
+  if (!Number.isFinite(ts)) return "";
+  const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m} min ago`;
@@ -72,5 +74,5 @@ export function timeAgo(iso: string): string {
   if (h < 24) return `${h} h ago`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d} d ago`;
-  return new Date(iso).toLocaleDateString("en-US");
+  return new Date(ts).toLocaleDateString("en-US");
 }

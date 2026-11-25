@@ -62,7 +62,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signOut: async () => {
-        await signOutRequest();
+        // Local-first: the session must always be dropped locally, even if
+        // the server call fails. `signOutRequest` already swallows the 404
+        // from the missing `/api/auth/logout` endpoint (GAP-1), and the
+        // try/catch here guards against any other transport failure.
+        try {
+          await signOutRequest();
+        } catch {
+          /* best-effort server-side invalidation */
+        }
         await clearSession();
         set({ session: null, status: "unauthenticated" });
       },

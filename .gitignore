@@ -34,12 +34,18 @@ yarn-error.*
 *.pem
 
 # local env files
+# `.env.local` / `.env.*.local` are the machine-specific overrides.
 .env*.local
 
 # The machine-specific API base URL (contains a LAN IP). Keep it local —
 # commit `.env.example` instead so teammates have the template.
 .env
 !.env.example
+
+# Belt-and-braces: never let a stray env file with a machine-specific
+# host reach the remote, even if it is added explicitly.
+.env.local
+.env.*.local
 
 # typescript
 *.tsbuildinfo
@@ -58,3 +64,5 @@ expo-stdout.log
 .claude/
 
 .taste-skill/
+# TokenCrusher (machine-local graph data)
+.tokencrusher/

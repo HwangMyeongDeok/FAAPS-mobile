@@ -19,6 +19,16 @@ import { Platform } from "react-native";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
 
+/**
+ * Fallback used when neither `EXPO_PUBLIC_API_BASE_URL` nor
+ * `extra.apiBaseUrl` provides a value.
+ *
+ *   • Android emulator → `10.0.2.2` is the host loopback alias.
+ *   • iOS simulator / web → `localhost` resolves to the host machine.
+ *
+ * ⚠️ Neither address is reachable from a physical device — there you must
+ * set `EXPO_PUBLIC_API_BASE_URL` in `.env.local` to the computer's LAN IP.
+ */
 const DEFAULT_BASE_URL =
   Platform.OS === "android" ? "http://10.0.2.2:8080" : "http://localhost:8080";
 
@@ -31,8 +41,8 @@ const DEFAULT_BASE_URL =
  * produce `http://host:8080/api/api/student/profile` → 404.
  *
  * Stripping the trailing `/api` makes both of these work:
- *   http://192.168.1.219:8080
- *   http://192.168.1.219:8080/api
+ *   http://<your-lan-ip>:8080
+ *   http://<your-lan-ip>:8080/api
  *
  * The result never ends with a slash, so `buildUrl()` can concatenate
  * safely.
@@ -51,8 +61,8 @@ function normalizeBaseUrl(raw: string): string {
 
 /** The raw, un-normalised value from every source, in priority order. */
 const rawBaseUrl =
-  (process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined) ||
-  (extra.apiBaseUrl as string | undefined) ||
+  (process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined)?.trim() ||
+  (typeof extra.apiBaseUrl === "string" ? extra.apiBaseUrl.trim() : "") ||
   DEFAULT_BASE_URL;
 
 /**

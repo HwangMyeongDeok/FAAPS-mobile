@@ -26,7 +26,10 @@ export function TermNode({
   onToggle,
   onCoursePress,
 }: TermNodeProps) {
-  const credits = semester.courses.reduce((s, c) => s + c.credits, 0);
+  // The backend may omit `courses` entirely for a semester it has not
+  // planned yet — never assume the array exists.
+  const courses = semester.courses ?? [];
+  const credits = courses.reduce((s, c) => s + (c.credits ?? 0), 0);
   const isCurrent = semester.status === "IN_PROGRESS";
   const isCompleted = semester.status === "COMPLETED";
 
@@ -90,7 +93,7 @@ export function TermNode({
                 {isCompleted ? <AppBadge label="Hoàn thành" tone="success" /> : null}
               </View>
               <Text className="mt-1 text-[11px] tabular-nums" style={{ color: MUTED }}>
-                {semester.semesterCode} · {semester.courses.length} môn · {credits} tín chỉ
+                {semester.semesterCode} · {courses.length} môn · {credits} tín chỉ
               </Text>
             </View>
             {open ? <ChevronUp size={18} color={MUTED} /> : <ChevronDown size={18} color={MUTED} />}
@@ -105,7 +108,7 @@ export function TermNode({
 
         {open ? (
           <View className="mt-2 gap-1.5">
-            {semester.courses.length === 0 ? (
+            {courses.length === 0 ? (
               <View
                 className="rounded-xl border border-dashed px-4 py-4"
                 style={{ borderColor: "#E5E7EB" }}
@@ -115,7 +118,7 @@ export function TermNode({
                 </Text>
               </View>
             ) : (
-              semester.courses.map((course) => (
+              courses.map((course) => (
                 <RoadmapCourseChip
                   key={`${semester.semesterNumber}-${course.courseId}`}
                   course={course}

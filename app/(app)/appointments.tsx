@@ -188,7 +188,7 @@ export default function AppointmentsScreen() {
         title="Đặt buổi gặp"
         subtitle={
           advisor
-            ? `Với ${advisor.fullName}${advisor.groupName ? ` · ${advisor.groupName}` : ""}`
+            ? `Với ${advisor.fullName ?? "cố vấn"}${advisor.groupName ? ` · ${advisor.groupName}` : ""}`
             : "Gặp cố vấn học tập trực tiếp"
         }
         onBack={goBack}
